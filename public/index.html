@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bot Fight Arena</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <div class="heroText">
+        <p class="eyebrow">Mushroom Game Local Arena</p>
+        <h1>Bot Fight Arena</h1>
+        <p class="muted heroLead">Upload 2 bot C++, random 20–50 dataset ngay lúc start, rồi cho đấu theo protocol thật. UI mới tách rõ từng dataset và từng lượt đổi role FIRST/SECOND.</p>
+      </div>
+      <div class="heroPanel">
+        <div class="heroStat"><b>10×17</b><span>Board</span></div>
+        <div class="heroStat"><b>10s</b><span>Total time / bot</span></div>
+        <div class="heroStat"><b>20–50</b><span>Datasets</span></div>
+      </div>
+    </section>
+
+    <section class="card setupCard">
+      <form id="fightForm">
+        <div class="sectionTitle">
+          <div>
+            <h2>Thiết lập trận đấu</h2>
+            <p class="muted">Chọn 2 file .cpp, số dataset, seed và kiểu pairing.</p>
+          </div>
+          <span class="pill neutral">Local runner</span>
+        </div>
+
+        <div class="botUploadGrid">
+          <label class="fileBox botABox">
+            <span class="fileLabel">Bot A</span>
+            <strong id="botAName">Chưa chọn file</strong>
+            <small>Upload source .cpp</small>
+            <input id="botAInput" type="file" name="botA" accept=".cpp" required />
+          </label>
+          <label class="fileBox botBBox">
+            <span class="fileLabel">Bot B</span>
+            <strong id="botBName">Chưa chọn file</strong>
+            <small>Upload source .cpp</small>
+            <input id="botBInput" type="file" name="botB" accept=".cpp" required />
+          </label>
+        </div>
+
+        <div class="optionsGrid">
+          <label class="field">
+            <span>Dataset count</span>
+            <input id="datasetCount" name="datasetCount" type="number" min="20" max="50" value="30" />
+            <small>Khuyến nghị Swiss: 30–50</small>
+          </label>
+          <label class="field wide">
+            <span>Seed base <small>(trống = random)</small></span>
+            <input name="seedBase" type="text" placeholder="vd: swiss-round-7" />
+            <small>Cùng seed base sẽ tái lập cùng bộ dataset.</small>
+          </label>
+          <label class="toggleCard">
+            <input name="playBothSides" type="checkbox" checked />
+            <span>
+              <b>Đấu đảo lượt</b>
+              <small>Mỗi dataset chạy 2 game: A FIRST rồi B FIRST. Kết quả sẽ được gom theo dataset.</small>
+            </span>
+          </label>
+        </div>
+
+        <div class="startRow">
+          <button id="startBtn" type="submit">Start Fight</button>
+          <p class="muted">Board của toàn bộ dataset được random một lần ngay khi bấm Start.</p>
+        </div>
+      </form>
+    </section>
+
+    <section id="statusCard" class="card hidden">
+      <div class="sectionTitle">
+        <div>
+          <h2>Tiến độ</h2>
+          <p id="statusText" class="muted">Đang chờ...</p>
+        </div>
+        <a id="exportLink" class="linkBtn hidden" href="#">Export JSON</a>
+      </div>
+      <div class="progress"><div id="progressBar"></div></div>
+      <div id="summary" class="summary"></div>
+      <div id="diagnostics" class="diagnosticsGrid"></div>
+    </section>
+
+    <section id="standingsCard" class="card hidden">
+      <div class="sectionTitle">
+        <div>
+          <h2>Standings</h2>
+          <p class="muted">Tổng hợp theo góc nhìn Bot A/B. Nếu bật đảo lượt, mỗi dataset gồm 2 game riêng biệt.</p>
+        </div>
+      </div>
+      <div id="standings" class="standingsGrid"></div>
+    </section>
+
+    <section id="gamesCard" class="card hidden">
+      <div class="sectionTitle">
+        <div>
+          <h2>Kết quả theo dataset</h2>
+          <p class="muted">Mỗi dataset được gom thành một cụm. Game role-swap được đặt cạnh nhau để so sánh công bằng.</p>
+        </div>
+        <div class="legend">
+          <span><i class="dot good"></i>A thắng</span>
+          <span><i class="dot bad"></i>B thắng</span>
+          <span><i class="dot drawDot"></i>Hòa</span>
+        </div>
+      </div>
+      <div id="datasetGroups" class="datasetGroups"></div>
+    </section>
+
+    <section id="inspectorCard" class="card hidden">
+      <div class="sectionTitle">
+        <div>
+          <h2>Game inspector</h2>
+          <p class="muted">Replay board theo từng turn, soi protocol log, stderr, timing và RSS memory từng bot.</p>
+        </div>
+        <span class="pill neutral">Turn-level telemetry</span>
+      </div>
+
+      <div class="inspectorGrid">
+        <aside class="inspectorListPanel">
+          <div class="panelLabel">Completed games</div>
+          <div id="gameList" class="gameList">
+            <div class="emptyState">Chưa có game hoàn thành.</div>
+          </div>
+        </aside>
+
+        <div class="inspectorPanel">
+          <div id="inspectorMeta" class="inspectorMeta">
+            <div class="emptyState">Chọn một game để mở replay chi tiết.</div>
+          </div>
+
+          <div class="replayControls">
+            <button id="prevTurn" class="turnButton" type="button">Prev turn</button>
+            <label class="turnRangeWrap">
+              <span id="turnLabel">Initial board</span>
+              <input id="turnRange" type="range" min="0" max="0" value="0" disabled />
+            </label>
+            <button id="nextTurn" class="turnButton" type="button">Next turn</button>
+          </div>
+
+          <div id="boardGrid" class="boardGrid" role="grid" aria-label="Mushroom board replay"></div>
+          <div id="turnDetails" class="turnDetails"></div>
+          <div id="turnTimeline" class="turnTimeline"></div>
+
+          <div class="logPanelGrid">
+            <details open>
+              <summary>
+                <span>Raw protocol log</span>
+                <small>INIT, FIRST, SECOND, SCORE</small>
+              </summary>
+              <pre id="rawLog"></pre>
+            </details>
+            <details>
+              <summary>
+                <span>Bot stderr</span>
+                <small>Last captured stderr per process</small>
+              </summary>
+              <pre id="stderrLog"></pre>
+            </details>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="eventsCard" class="card hidden">
+      <details>
+        <summary>
+          <span>Compile logs</span>
+          <small>stdout/stderr from compiler candidates</small>
+        </summary>
+        <pre id="compileLogs"></pre>
+      </details>
+      <details open>
+        <summary>
+          <span>Live events</span>
+          <small>Compile, start game, move, finish</small>
+        </summary>
+        <pre id="events"></pre>
+      </details>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>
