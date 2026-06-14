@@ -1,15 +1,15 @@
 # Bot Fight Arena
 
-Web app local để upload 2 bot C++ cho Mushroom Game và cho chúng đấu trên 20–50 dataset random.
+Web app local để upload 2 bot C++ cho Mushroom Game và cho chúng đấu trên 20–1000 dataset random.
 
 ## Tính năng
 
 - Upload 2 file `.cpp`.
 - Backend tự thử `CXX`, Homebrew `g++-15..g++-11`, `clang++`, `g++`, `c++`; đồng thời tự thay `#include <bits/stdc++.h>` / `#include "bits/stdc++.h"` bằng header portable để chạy tốt trên macOS.
-- Chọn số dataset từ 20 đến 50.
+- Chọn số dataset từ 20 đến 1000.
 - Board 10×17 được random toàn bộ ngay lúc bấm **Start Fight**.
 - Có option **đảo lượt FIRST/SECOND** cho mỗi dataset.
-- Mỗi bot có tổng time 10.000 ms mỗi game.
+- Mỗi bot có game clock 30.000 ms mỗi game, kèm process hard cap 30s theo language time limit.
 - Validate nước đi theo luật: rectangle tổng còn lại bằng 10, bốn cạnh đều chạm ít nhất một ô chưa bị xóa.
 - Stream/poll live progress, bảng tổng kết, log từng game, export JSON.
 

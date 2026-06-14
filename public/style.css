@@ -39,7 +39,7 @@ h2 { margin: 0 0 7px; letter-spacing: -0.025em; }
 .eyebrow { color: var(--accent); text-transform: uppercase; letter-spacing: .16em; font-size: 12px; font-weight: 800; margin: 0 0 12px; }
 .muted { color: var(--muted); margin: 0; }
 .heroLead { font-size: 16px; line-height: 1.65; }
-.heroPanel { display: grid; grid-template-columns: repeat(3, minmax(86px, 1fr)); gap: 10px; border: 1px solid var(--border); background: rgba(255,255,255,.045); border-radius: 24px; padding: 12px; box-shadow: var(--shadow); }
+.heroPanel { display: grid; grid-template-columns: repeat(4, minmax(86px, 1fr)); gap: 10px; border: 1px solid var(--border); background: rgba(255,255,255,.045); border-radius: 24px; padding: 12px; box-shadow: var(--shadow); }
 .heroStat { padding: 12px 14px; border-radius: 18px; background: rgba(255,255,255,.055); min-width: 92px; }
 .heroStat b { display: block; font-size: 22px; line-height: 1; }
 .heroStat span { color: var(--muted); font-size: 12px; display: block; margin-top: 7px; }

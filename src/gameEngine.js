@@ -8,7 +8,9 @@ const crypto = require('crypto');
 const R = 10;
 const C = 17;
 const N = R * C;
-const TOTAL_TIME_MS = 10000;
+const TOTAL_TIME_MS = 30000;
+const READY_TIMEOUT_MS = 3000;
+const PROCESS_TIME_LIMIT_MS = 30000;
 
 function xmur3(str) {
   let h = 1779033703 ^ str.length;
@@ -299,10 +301,11 @@ class LineProcess {
     this.maxRssKb = null;
     this.memoryTimer = null;
     this.memorySampleInFlight = false;
+    this.processTimer = null;
   }
 
   start() {
-    this.proc = spawn(this.exePath, [], { stdio: ['pipe', 'pipe', 'pipe'] });
+    this.proc = spawn(this.exePath, [], { cwd: path.dirname(this.exePath), stdio: ['pipe', 'pipe', 'pipe'] });
     this.pid = this.proc.pid;
     this.proc.stdout.setEncoding('utf8');
     this.proc.stderr.setEncoding('utf8');
@@ -315,17 +318,27 @@ class LineProcess {
       this.exited = true;
       this.exitCode = code;
       this._stopMemorySampler();
+      this._stopProcessTimer();
       this._flushWaiters(new Error(`${this.label} exited with code ${code}`));
     });
     this.proc.on('error', err => this._flushWaiters(err));
     this.sampleMemory();
     this.memoryTimer = setInterval(() => this.sampleMemory(), 250);
     this.memoryTimer.unref?.();
+    this.processTimer = setTimeout(() => {
+      try { this.proc?.kill('SIGKILL'); } catch (_) {}
+    }, PROCESS_TIME_LIMIT_MS);
+    this.processTimer.unref?.();
   }
 
   _stopMemorySampler() {
     if (this.memoryTimer) clearInterval(this.memoryTimer);
     this.memoryTimer = null;
+  }
+
+  _stopProcessTimer() {
+    if (this.processTimer) clearTimeout(this.processTimer);
+    this.processTimer = null;
   }
 
   _recordMemory(rssKb) {
@@ -402,6 +415,7 @@ class LineProcess {
 
   stop() {
     this._stopMemorySampler();
+    this._stopProcessTimer();
     try { this.send('FINISH'); } catch (_) {}
     try { this.proc?.kill('SIGTERM'); } catch (_) {}
   }
@@ -433,8 +447,8 @@ async function runSingleGame({ botFirstExe, botSecondExe, boardRows, datasetInde
 
     first.send('READY FIRST');
     second.send('READY SECOND');
-    const ok1 = await first.readLine(1500);
-    const ok2 = await second.readLine(1500);
+    const ok1 = await first.readLine(READY_TIMEOUT_MS);
+    const ok2 = await second.readLine(READY_TIMEOUT_MS);
     if (ok1.trim() !== 'OK') throw new Error(`FIRST did not answer OK, got ${JSON.stringify(ok1)}`);
     if (ok2.trim() !== 'OK') throw new Error(`SECOND did not answer OK, got ${JSON.stringify(ok2)}`);
 
@@ -571,8 +585,8 @@ async function runSingleGame({ botFirstExe, botSecondExe, boardRows, datasetInde
 }
 
 async function runFight({ botAExe, botBExe, datasetCount, playBothSides = true, seedBase = '', onEvent = null, onGameResult = null }) {
-  const count = Math.max(1, Math.min(50, Number(datasetCount) || 20));
-  const realSeed = seedBase || crypto.randomBytes(8).toString('hex');
+  const count = Math.max(1, Math.min(1000, Number(datasetCount) || 20));
+  const realSeed = String(seedBase || '').trim();
   const datasets = [];
   for (let i = 0; i < count; i++) {
     const seed = makeSeed(realSeed, i);
@@ -581,7 +595,7 @@ async function runFight({ botAExe, botBExe, datasetCount, playBothSides = true, 
 
   const results = [];
   const summary = {
-    seedBase: realSeed,
+    seedBase: realSeed || '(per-dataset random)',
     datasetCount: count,
     playBothSides: !!playBothSides,
     gamesTotal: count * (playBothSides ? 2 : 1),
@@ -689,6 +703,8 @@ module.exports = {
   R,
   C,
   TOTAL_TIME_MS,
+  READY_TIMEOUT_MS,
+  PROCESS_TIME_LIMIT_MS,
   generateBoard,
   generateLegalMoves,
   isLegalMove,

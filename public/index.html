@@ -12,12 +12,13 @@
       <div class="heroText">
         <p class="eyebrow">Mushroom Game Local Arena</p>
         <h1>Bot Fight Arena</h1>
-        <p class="muted heroLead">Upload 2 bot C++, random 20–50 dataset ngay lúc start, rồi cho đấu theo protocol thật. UI mới tách rõ từng dataset và từng lượt đổi role FIRST/SECOND.</p>
+        <p class="muted heroLead">Upload 2 bot C++, random 20–1000 dataset ngay lúc start, rồi cho đấu theo protocol thật. UI mới tách rõ từng dataset và từng lượt đổi role FIRST/SECOND.</p>
       </div>
       <div class="heroPanel">
         <div class="heroStat"><b>10×17</b><span>Board</span></div>
-        <div class="heroStat"><b>10s</b><span>Total time / bot</span></div>
-        <div class="heroStat"><b>20–50</b><span>Datasets</span></div>
+        <div class="heroStat"><b>30s</b><span>Game clock / bot</span></div>
+        <div class="heroStat"><b>30s</b><span>Process limit</span></div>
+        <div class="heroStat"><b>20–1000</b><span>Datasets</span></div>
       </div>
     </section>
 
@@ -26,7 +27,7 @@
         <div class="sectionTitle">
           <div>
             <h2>Thiết lập trận đấu</h2>
-            <p class="muted">Chọn 2 file .cpp, số dataset, seed và kiểu pairing.</p>
+            <p class="muted">Chọn 2 file .cpp, optional data.bin, số dataset, seed và kiểu pairing.</p>
           </div>
           <span class="pill neutral">Local runner</span>
         </div>
@@ -44,24 +45,36 @@
             <small>Upload source .cpp</small>
             <input id="botBInput" type="file" name="botB" accept=".cpp" required />
           </label>
+          <label class="fileBox botABox">
+            <span class="fileLabel">Bot A data</span>
+            <strong id="botADataName">Không dùng data.bin</strong>
+            <small>Optional file named data.bin</small>
+            <input id="botADataInput" type="file" name="botAData" accept=".bin" />
+          </label>
+          <label class="fileBox botBBox">
+            <span class="fileLabel">Bot B data</span>
+            <strong id="botBDataName">Không dùng data.bin</strong>
+            <small>Optional file named data.bin</small>
+            <input id="botBDataInput" type="file" name="botBData" accept=".bin" />
+          </label>
         </div>
 
         <div class="optionsGrid">
           <label class="field">
             <span>Dataset count</span>
-            <input id="datasetCount" name="datasetCount" type="number" min="20" max="50" value="30" />
-            <small>Khuyến nghị Swiss: 30–50</small>
+            <input id="datasetCount" name="datasetCount" type="number" min="20" max="1000" value="30" />
+            <small>Limit: 1000 datasets</small>
           </label>
           <label class="field wide">
-            <span>Seed base <small>(trống = random)</small></span>
+            <span>Seed base <small>(trống = random per dataset)</small></span>
             <input name="seedBase" type="text" placeholder="vd: swiss-round-7" />
-            <small>Cùng seed base sẽ tái lập cùng bộ dataset.</small>
+            <small>Trống: mỗi dataset-pair có seed riêng. Có seed base: tái lập bằng base#index.</small>
           </label>
           <label class="toggleCard">
             <input name="playBothSides" type="checkbox" checked />
             <span>
               <b>Đấu đảo lượt</b>
-              <small>Mỗi dataset chạy 2 game: A FIRST rồi B FIRST. Kết quả sẽ được gom theo dataset.</small>
+            <small>Mỗi dataset chạy 2 game cùng board: A FIRST rồi B FIRST. Kết quả sẽ được gom theo dataset.</small>
             </span>
           </label>
         </div>

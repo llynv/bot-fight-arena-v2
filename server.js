@@ -19,12 +19,17 @@ fs.mkdirSync(JOB_DIR, { recursive: true });
 const upload = multer({
   dest: UPLOAD_DIR,
   limits: {
-    files: 2,
-    fileSize: 1024 * 1024 * 2
+    files: 4,
+    fileSize: 1024 * 1024 * 10
   },
   fileFilter: (_req, file, cb) => {
-    if (!file.originalname.toLowerCase().endsWith('.cpp')) {
+    const lowerName = file.originalname.toLowerCase();
+    if ((file.fieldname === 'botA' || file.fieldname === 'botB') && !lowerName.endsWith('.cpp')) {
       cb(new Error('Only .cpp files are accepted.'));
+    } else if ((file.fieldname === 'botAData' || file.fieldname === 'botBData') && lowerName !== 'data.bin') {
+      cb(new Error('Only data.bin files are accepted for bot data.'));
+    } else if (!['botA', 'botB', 'botAData', 'botBData'].includes(file.fieldname)) {
+      cb(new Error('Unexpected upload field.'));
     } else {
       cb(null, true);
     }
@@ -98,13 +103,15 @@ function addEvent(job, ev) {
 app.use(express.static(path.join(ROOT, 'public')));
 app.use(express.json());
 
-app.post('/api/start', upload.fields([{ name: 'botA', maxCount: 1 }, { name: 'botB', maxCount: 1 }]), async (req, res) => {
+app.post('/api/start', upload.fields([{ name: 'botA', maxCount: 1 }, { name: 'botB', maxCount: 1 }, { name: 'botAData', maxCount: 1 }, { name: 'botBData', maxCount: 1 }]), async (req, res) => {
   const files = req.files || {};
   if (!files.botA?.[0] || !files.botB?.[0]) {
     return res.status(400).json({ error: 'Upload both botA and botB .cpp files.' });
   }
+  const botAData = files.botAData?.[0] || null;
+  const botBData = files.botBData?.[0] || null;
 
-  const datasetCount = Math.max(20, Math.min(50, Number(req.body.datasetCount || 20)));
+  const datasetCount = Math.max(20, Math.min(1000, Number(req.body.datasetCount || 20)));
   const playBothSides = req.body.playBothSides === 'true' || req.body.playBothSides === 'on' || req.body.playBothSides === true;
   const seedBase = String(req.body.seedBase || '').trim();
 
@@ -112,9 +119,11 @@ app.post('/api/start', upload.fields([{ name: 'botA', maxCount: 1 }, { name: 'bo
   job.settings = {
     datasetCount,
     playBothSides,
-    seedBase: seedBase || '(random)',
+    seedBase: seedBase || '(per-dataset random)',
     botAName: files.botA[0].originalname,
-    botBName: files.botB[0].originalname
+    botBName: files.botB[0].originalname,
+    botADataName: botAData ? botAData.originalname : '',
+    botBDataName: botBData ? botBData.originalname : ''
   };
   job.progress.total = datasetCount * (playBothSides ? 2 : 1);
   job.progress.current = 'Compiling bots';
@@ -126,13 +135,20 @@ app.post('/api/start', upload.fields([{ name: 'botA', maxCount: 1 }, { name: 'bo
       job.status = 'compiling';
       const botASrc = path.join(job.dir, `A_${safeName(files.botA[0].originalname)}`);
       const botBSrc = path.join(job.dir, `B_${safeName(files.botB[0].originalname)}`);
+      const botADir = path.join(job.dir, 'botA');
+      const botBDir = path.join(job.dir, 'botB');
+      fs.mkdirSync(botADir, { recursive: true });
+      fs.mkdirSync(botBDir, { recursive: true });
       fs.copyFileSync(files.botA[0].path, botASrc);
       fs.copyFileSync(files.botB[0].path, botBSrc);
-      try { fs.unlinkSync(files.botA[0].path); } catch (_) {}
-      try { fs.unlinkSync(files.botB[0].path); } catch (_) {}
+      if (botAData) fs.copyFileSync(botAData.path, path.join(botADir, 'data.bin'));
+      if (botBData) fs.copyFileSync(botBData.path, path.join(botBDir, 'data.bin'));
+      for (const file of [files.botA[0], files.botB[0], botAData, botBData]) {
+        try { if (file) fs.unlinkSync(file.path); } catch (_) {}
+      }
 
-      const botAExe = path.join(job.dir, 'botA');
-      const botBExe = path.join(job.dir, 'botB');
+      const botAExe = path.join(botADir, 'bot');
+      const botBExe = path.join(botBDir, 'bot');
       const aLog = await compileCpp(botASrc, botAExe, { timeoutMs: 45000 });
       job.compileLogs.push({ bot: 'A', stderr: aLog.stderr || '', stdout: aLog.stdout || '' });
       const bLog = await compileCpp(botBSrc, botBExe, { timeoutMs: 45000 });

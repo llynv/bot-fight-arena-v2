@@ -15,8 +15,12 @@ const compileLogsPre = document.getElementById('compileLogs');
 const exportLink = document.getElementById('exportLink');
 const botAInput = document.getElementById('botAInput');
 const botBInput = document.getElementById('botBInput');
+const botADataInput = document.getElementById('botADataInput');
+const botBDataInput = document.getElementById('botBDataInput');
 const botAName = document.getElementById('botAName');
 const botBName = document.getElementById('botBName');
+const botADataName = document.getElementById('botADataName');
+const botBDataName = document.getElementById('botBDataName');
 const inspectorCard = document.getElementById('inspectorCard');
 const gameList = document.getElementById('gameList');
 const inspectorMeta = document.getElementById('inspectorMeta');
@@ -41,6 +45,8 @@ let detailRequestSeq = 0;
 
 botAInput?.addEventListener('change', () => updateFileName(botAInput, botAName));
 botBInput?.addEventListener('change', () => updateFileName(botBInput, botBName));
+botADataInput?.addEventListener('change', () => updateFileName(botADataInput, botADataName, 'Không dùng data.bin'));
+botBDataInput?.addEventListener('change', () => updateFileName(botBDataInput, botBDataName, 'Không dùng data.bin'));
 datasetGroups?.addEventListener('click', (e) => {
   const button = e.target.closest('button[data-game-index]');
   if (button) selectGame(Number(button.dataset.gameIndex));
@@ -74,9 +80,9 @@ nextTurn?.addEventListener('click', () => {
   renderTurnTimeline();
 });
 
-function updateFileName(input, target) {
+function updateFileName(input, target, emptyText = 'Chưa chọn file') {
   const file = input.files?.[0];
-  target.textContent = file ? file.name : 'Chưa chọn file';
+  target.textContent = file ? file.name : emptyText;
 }
 
 form.addEventListener('submit', async (e) => {
