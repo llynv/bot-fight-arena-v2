@@ -12,13 +12,13 @@
       <div class="heroText">
         <p class="eyebrow">Mushroom Game Local Arena</p>
         <h1>Bot Fight Arena</h1>
-        <p class="muted heroLead">Upload 2 bot C++, random 20–1000 dataset ngay lúc start, rồi cho đấu theo protocol thật. UI mới tách rõ từng dataset và từng lượt đổi role FIRST/SECOND.</p>
+        <p class="muted heroLead">Upload 2 bot C++, chỉnh clock từng bên, chọn số dataset rồi cho đấu theo protocol thật. UI mới tách rõ từng dataset và từng lượt đổi role FIRST/SECOND.</p>
       </div>
       <div class="heroPanel">
         <div class="heroStat"><b>10×17</b><span>Board</span></div>
-        <div class="heroStat"><b>30s</b><span>Game clock / bot</span></div>
-        <div class="heroStat"><b>30s</b><span>Process limit</span></div>
-        <div class="heroStat"><b>20–1000</b><span>Datasets</span></div>
+        <div class="heroStat"><b id="heroBotClocks">30s / 30s</b><span>Bot clocks</span></div>
+        <div class="heroStat"><b id="heroProcessLimit">85s</b><span>Process cap</span></div>
+        <div class="heroStat"><b id="heroDatasetCount">30</b><span>Datasets</span></div>
       </div>
     </section>
 
@@ -62,8 +62,18 @@
         <div class="optionsGrid">
           <label class="field">
             <span>Dataset count</span>
-            <input id="datasetCount" name="datasetCount" type="number" min="20" max="1000" value="30" />
-            <small>Limit: 1000 datasets</small>
+            <input id="datasetCount" name="datasetCount" type="number" min="1" max="1000" value="30" />
+            <small>Run from 1 to 1000 datasets</small>
+          </label>
+          <label class="field">
+            <span>Bot A time limit (ms)</span>
+            <input id="botATimeLimitMs" name="botATimeLimitMs" type="number" min="1000" max="600000" value="30000" />
+            <small>Clock for Bot A in each game</small>
+          </label>
+          <label class="field">
+            <span>Bot B time limit (ms)</span>
+            <input id="botBTimeLimitMs" name="botBTimeLimitMs" type="number" min="1000" max="600000" value="30000" />
+            <small>Clock for Bot B in each game</small>
           </label>
           <label class="field wide">
             <span>Seed base <small>(trống = random per dataset)</small></span>
@@ -78,10 +88,10 @@
             </span>
           </label>
         </div>
-
+        
         <div class="startRow">
           <button id="startBtn" type="submit">Start Fight</button>
-          <p class="muted">Board của toàn bộ dataset được random một lần ngay khi bấm Start.</p>
+          <p class="muted">Board được random ngay khi bấm Start. Process cap được tự tính từ tổng clock hai bot để tránh kill nhầm giữa game.</p>
         </div>
       </form>
     </section>

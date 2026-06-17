@@ -9,8 +9,38 @@ const R = 10;
 const C = 17;
 const N = R * C;
 const TOTAL_TIME_MS = 30000;
-const READY_TIMEOUT_MS = 3000;
-const PROCESS_TIME_LIMIT_MS = 30000;
+const READY_TIMEOUT_MS = 10000;
+const PROCESS_TIME_LIMIT_GRACE_MS = 5000;
+const PROCESS_TIME_LIMIT_MS = TOTAL_TIME_MS * 2 + READY_TIMEOUT_MS * 2 + PROCESS_TIME_LIMIT_GRACE_MS;
+
+function clampPositiveInt(value, fallback, { min = 1, max = 600000 } = {}) {
+  if (value === null || value === undefined || value === '') return fallback;
+  const n = Math.floor(Number(value));
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(min, Math.min(max, n));
+}
+
+function deriveProcessTimeLimitMs(firstTimeLimitMs, secondTimeLimitMs, readyTimeoutMs) {
+  return firstTimeLimitMs + secondTimeLimitMs + readyTimeoutMs * 2 + PROCESS_TIME_LIMIT_GRACE_MS;
+}
+
+function normalizeSingleGameTiming(options = {}) {
+  const readyTimeoutMs = clampPositiveInt(options.readyTimeoutMs, READY_TIMEOUT_MS, { min: 100, max: 600000 });
+  const firstTimeLimitMs = clampPositiveInt(options.timeLimitsMs?.first, TOTAL_TIME_MS, { min: 100, max: 600000 });
+  const secondTimeLimitMs = clampPositiveInt(options.timeLimitsMs?.second, TOTAL_TIME_MS, { min: 100, max: 600000 });
+  const derivedProcessTimeLimitMs = deriveProcessTimeLimitMs(firstTimeLimitMs, secondTimeLimitMs, readyTimeoutMs);
+  const processTimeLimitMs = clampPositiveInt(options.processTimeLimitMs, derivedProcessTimeLimitMs, { min: 500, max: 1200000 });
+  return { readyTimeoutMs, firstTimeLimitMs, secondTimeLimitMs, processTimeLimitMs };
+}
+
+function normalizeFightTiming(options = {}) {
+  const botATimeLimitMs = clampPositiveInt(options.botATimeLimitMs, TOTAL_TIME_MS, { min: 100, max: 600000 });
+  const botBTimeLimitMs = clampPositiveInt(options.botBTimeLimitMs, TOTAL_TIME_MS, { min: 100, max: 600000 });
+  const readyTimeoutMs = clampPositiveInt(options.readyTimeoutMs, READY_TIMEOUT_MS, { min: 100, max: 600000 });
+  const derivedProcessTimeLimitMs = deriveProcessTimeLimitMs(botATimeLimitMs, botBTimeLimitMs, readyTimeoutMs);
+  const processTimeLimitMs = clampPositiveInt(options.processTimeLimitMs, derivedProcessTimeLimitMs, { min: 500, max: 1200000 });
+  return { botATimeLimitMs, botBTimeLimitMs, readyTimeoutMs, processTimeLimitMs };
+}
 
 function xmur3(str) {
   let h = 1779033703 ^ str.length;
@@ -255,7 +285,7 @@ function compilerCandidates(preferred) {
 
 function compileWith(compiler, args, options) {
   return new Promise((resolve, reject) => {
-    execFile(compiler, args, { timeout: options.timeoutMs || 30000, maxBuffer: 1024 * 1024 * 8 }, (err, stdout, stderr) => {
+    execFile(compiler, args, { timeout: options.timeoutMs || 10000, maxBuffer: 1024 * 1024 * 8 }, (err, stdout, stderr) => {
       if (err) reject({ compiler, stdout, stderr, err });
       else resolve({ compiler, stdout, stderr });
     });
@@ -286,7 +316,7 @@ async function compileCpp(sourcePath, outputPath, options = {}) {
 }
 
 class LineProcess {
-  constructor(exePath, label) {
+  constructor(exePath, label, options = {}) {
     this.exePath = exePath;
     this.label = label;
     this.proc = null;
@@ -302,6 +332,8 @@ class LineProcess {
     this.memoryTimer = null;
     this.memorySampleInFlight = false;
     this.processTimer = null;
+    this.processTimeLimitMs = clampPositiveInt(options.processTimeLimitMs, PROCESS_TIME_LIMIT_MS, { min: 500, max: 1200000 });
+    this.processExitReason = '';
   }
 
   start() {
@@ -314,20 +346,24 @@ class LineProcess {
       this.stderr += chunk;
       if (this.stderr.length > 20000) this.stderr = this.stderr.slice(-20000);
     });
-    this.proc.on('exit', code => {
+    this.proc.on('exit', (code, signal) => {
       this.exited = true;
       this.exitCode = code;
       this._stopMemorySampler();
       this._stopProcessTimer();
-      this._flushWaiters(new Error(`${this.label} exited with code ${code}`));
+      const message = this.processExitReason || `${this.label} exited${signal ? ` from ${signal}` : ` with code ${code}`}`;
+      const err = new Error(message);
+      err.code = this.processExitReason ? 'PROCESS_LIMIT' : 'PROCESS_EXIT';
+      this._flushWaiters(err);
     });
     this.proc.on('error', err => this._flushWaiters(err));
     this.sampleMemory();
     this.memoryTimer = setInterval(() => this.sampleMemory(), 250);
     this.memoryTimer.unref?.();
     this.processTimer = setTimeout(() => {
+      this.processExitReason = `${this.label} exceeded process lifetime limit of ${this.processTimeLimitMs}ms`;
       try { this.proc?.kill('SIGKILL'); } catch (_) {}
-    }, PROCESS_TIME_LIMIT_MS);
+    }, this.processTimeLimitMs);
     this.processTimer.unref?.();
   }
 
@@ -407,25 +443,31 @@ class LineProcess {
       const timer = setTimeout(() => {
         const idx = this.waiters.findIndex(w => w.resolve === resolve);
         if (idx !== -1) this.waiters.splice(idx, 1);
-        reject(new Error(`${this.label} timed out after ${timeoutMs}ms`));
+        const err = new Error(`${this.label} timed out after ${timeoutMs}ms`);
+        err.code = 'READ_TIMEOUT';
+        reject(err);
       }, timeoutMs);
       this.waiters.push({ resolve, reject, timer });
     });
   }
 
-  stop() {
+  stop(graceMs = 50) {
     this._stopMemorySampler();
     this._stopProcessTimer();
     try { this.send('FINISH'); } catch (_) {}
-    try { this.proc?.kill('SIGTERM'); } catch (_) {}
+    if (this.exited) return;
+    setTimeout(() => {
+      try { this.proc?.kill('SIGTERM'); } catch (_) {}
+    }, graceMs).unref?.();
   }
 }
 
-async function runSingleGame({ botFirstExe, botSecondExe, boardRows, datasetIndex = 0, gameIndex = 0, labels = {}, onEvent = null }) {
-  const first = new LineProcess(botFirstExe, labels.first || 'FIRST');
-  const second = new LineProcess(botSecondExe, labels.second || 'SECOND');
+async function runSingleGame({ botFirstExe, botSecondExe, boardRows, datasetIndex = 0, gameIndex = 0, labels = {}, onEvent = null, timeLimitsMs = null, readyTimeoutMs = READY_TIMEOUT_MS, processTimeLimitMs = null }) {
+  const timing = normalizeSingleGameTiming({ timeLimitsMs, readyTimeoutMs, processTimeLimitMs });
+  const first = new LineProcess(botFirstExe, labels.first || 'FIRST', { processTimeLimitMs: timing.processTimeLimitMs });
+  const second = new LineProcess(botSecondExe, labels.second || 'SECOND', { processTimeLimitMs: timing.processTimeLimitMs });
   const state = buildState(boardRows);
-  const remaining = [TOTAL_TIME_MS, TOTAL_TIME_MS];
+  const remaining = [timing.firstTimeLimitMs, timing.secondTimeLimitMs];
   const bot = [first, second];
   const log = [];
   const moves = [];
@@ -439,18 +481,40 @@ async function runSingleGame({ botFirstExe, botSecondExe, boardRows, datasetInde
     if (onEvent) onEvent({ datasetIndex, gameIndex, ...ev });
   };
 
-  try {
-    first.start();
-    second.start();
-    first.sampleMemory();
-    second.sampleMemory();
+  const readyFailureDetail = async (proc, role, err) => {
+    await proc.sampleMemory();
+    const rssKb = proc.lastRssKb;
+    const maxRssKb = proc.maxRssKb;
+    const stderrTail = proc.stderr ? proc.stderr.slice(-160) : '';
+    const detail = [
+      `${role} startup failed`,
+      `pid=${proc.pid || 'n/a'}`,
+      `rss=${Number.isFinite(rssKb) ? `${rssKb}KiB` : 'n/a'}`,
+      `maxRss=${Number.isFinite(maxRssKb) ? `${maxRssKb}KiB` : 'n/a'}`
+    ];
+    if (stderrTail) detail.push(`stderr=${JSON.stringify(stderrTail)}`);
+    if (err?.message) detail.push(`cause=${err.message}`);
+    return detail.join(' · ');
+  };
 
-    first.send('READY FIRST');
-    second.send('READY SECOND');
-    const ok1 = await first.readLine(READY_TIMEOUT_MS);
-    const ok2 = await second.readLine(READY_TIMEOUT_MS);
-    if (ok1.trim() !== 'OK') throw new Error(`FIRST did not answer OK, got ${JSON.stringify(ok1)}`);
-    if (ok2.trim() !== 'OK') throw new Error(`SECOND did not answer OK, got ${JSON.stringify(ok2)}`);
+  const waitForReady = async (proc, readyLine, role) => {
+    proc.start();
+    await proc.sampleMemory();
+    proc.send(readyLine);
+    try {
+      const line = await proc.readLine(timing.readyTimeoutMs);
+      if (line.trim() !== 'OK') {
+        throw new Error(`${role} did not answer OK, got ${JSON.stringify(line)}`);
+      }
+      return line;
+    } catch (err) {
+      throw new Error(await readyFailureDetail(proc, role, err));
+    }
+  };
+
+  try {
+    await waitForReady(first, 'READY FIRST', labels.first || 'FIRST');
+    await waitForReady(second, 'READY SECOND', labels.second || 'SECOND');
 
     const initLine = `INIT ${boardRows.join(' ')}`;
     first.send(initLine);
@@ -469,8 +533,16 @@ async function runSingleGame({ botFirstExe, botSecondExe, boardRows, datasetInde
       try {
         line = await p.readLine(timeoutMs);
       } catch (e) {
-        status = 'timeout';
-        reason = `${role} timeout: ${e.message}`;
+        if (e?.code === 'READ_TIMEOUT') {
+          status = 'timeout';
+          reason = `${role} timeout: ${e.message}`;
+        } else if (e?.code === 'PROCESS_LIMIT') {
+          status = 'process_limit';
+          reason = `${role} process limit: ${e.message}`;
+        } else {
+          status = 'process_exit';
+          reason = `${role} process exit: ${e.message}`;
+        }
         winner = 1 - turn;
         break;
       }
@@ -539,12 +611,8 @@ async function runSingleGame({ botFirstExe, botSecondExe, boardRows, datasetInde
     reason = e.message;
   } finally {
     await Promise.allSettled([first.sampleMemory(), second.sampleMemory()]);
-    try { first.send('FINISH'); } catch (_) {}
-    try { second.send('FINISH'); } catch (_) {}
-    setTimeout(() => {
-      try { first.stop(); } catch (_) {}
-      try { second.stop(); } catch (_) {}
-    }, 50).unref?.();
+    try { first.stop(); } catch (_) {}
+    try { second.stop(); } catch (_) {}
   }
 
   const finalScore = scoreState(state);
@@ -584,9 +652,10 @@ async function runSingleGame({ botFirstExe, botSecondExe, boardRows, datasetInde
   };
 }
 
-async function runFight({ botAExe, botBExe, datasetCount, playBothSides = true, seedBase = '', onEvent = null, onGameResult = null }) {
+async function runFight({ botAExe, botBExe, datasetCount, playBothSides = true, seedBase = '', botATimeLimitMs = TOTAL_TIME_MS, botBTimeLimitMs = TOTAL_TIME_MS, readyTimeoutMs = READY_TIMEOUT_MS, processTimeLimitMs = null, onEvent = null, onGameResult = null }) {
   const count = Math.max(1, Math.min(1000, Number(datasetCount) || 20));
   const realSeed = String(seedBase || '').trim();
+  const timing = normalizeFightTiming({ botATimeLimitMs, botBTimeLimitMs, readyTimeoutMs, processTimeLimitMs });
   const datasets = [];
   for (let i = 0; i < count; i++) {
     const seed = makeSeed(realSeed, i);
@@ -598,6 +667,10 @@ async function runFight({ botAExe, botBExe, datasetCount, playBothSides = true, 
     seedBase: realSeed || '(per-dataset random)',
     datasetCount: count,
     playBothSides: !!playBothSides,
+    botATimeLimitMs: timing.botATimeLimitMs,
+    botBTimeLimitMs: timing.botBTimeLimitMs,
+    readyTimeoutMs: timing.readyTimeoutMs,
+    processTimeLimitMs: timing.processTimeLimitMs,
     gamesTotal: count * (playBothSides ? 2 : 1),
     gamesDone: 0,
     botA: { wins: 0, losses: 0, draws: 0, totalScore: 0 },
@@ -624,7 +697,12 @@ async function runFight({ botAExe, botBExe, datasetCount, playBothSides = true, 
         datasetIndex: ds.index,
         gameIndex,
         labels: pairing.labels,
-        onEvent
+        onEvent,
+        timeLimitsMs: pairing.aRole === 0
+          ? { first: timing.botATimeLimitMs, second: timing.botBTimeLimitMs }
+          : { first: timing.botBTimeLimitMs, second: timing.botATimeLimitMs },
+        readyTimeoutMs: timing.readyTimeoutMs,
+        processTimeLimitMs: timing.processTimeLimitMs
       });
       res.seed = ds.seed;
       res.aRole = pairing.aRole;

@@ -33,6 +33,15 @@ const prevTurn = document.getElementById('prevTurn');
 const nextTurn = document.getElementById('nextTurn');
 const rawLog = document.getElementById('rawLog');
 const stderrLog = document.getElementById('stderrLog');
+const datasetCountInput = document.getElementById('datasetCount');
+const botATimeLimitInput = document.getElementById('botATimeLimitMs');
+const botBTimeLimitInput = document.getElementById('botBTimeLimitMs');
+const heroBotClocks = document.getElementById('heroBotClocks');
+const heroProcessLimit = document.getElementById('heroProcessLimit');
+const heroDatasetCount = document.getElementById('heroDatasetCount');
+
+const DEFAULT_READY_TIMEOUT_MS = 10000;
+const PROCESS_TIME_LIMIT_GRACE_MS = 5000;
 
 let currentJobId = null;
 let currentJob = null;
@@ -47,6 +56,9 @@ botAInput?.addEventListener('change', () => updateFileName(botAInput, botAName))
 botBInput?.addEventListener('change', () => updateFileName(botBInput, botBName));
 botADataInput?.addEventListener('change', () => updateFileName(botADataInput, botADataName, 'Không dùng data.bin'));
 botBDataInput?.addEventListener('change', () => updateFileName(botBDataInput, botBDataName, 'Không dùng data.bin'));
+datasetCountInput?.addEventListener('input', syncSetupPreview);
+botATimeLimitInput?.addEventListener('input', syncSetupPreview);
+botBTimeLimitInput?.addEventListener('input', syncSetupPreview);
 datasetGroups?.addEventListener('click', (e) => {
   const button = e.target.closest('button[data-game-index]');
   if (button) selectGame(Number(button.dataset.gameIndex));
@@ -79,6 +91,8 @@ nextTurn?.addEventListener('click', () => {
   renderReplay();
   renderTurnTimeline();
 });
+
+syncSetupPreview();
 
 function updateFileName(input, target, emptyText = 'Chưa chọn file') {
   const file = input.files?.[0];
@@ -196,6 +210,8 @@ function renderPendingSummary(settings) {
     <div class="metric"><span>Bot A</span><b>${escapeHtml(shortName(settings.botAName || 'Bot A'))}</b><small>Waiting</small></div>
     <div class="metric"><span>Bot B</span><b>${escapeHtml(shortName(settings.botBName || 'Bot B'))}</b><small>Waiting</small></div>
     <div class="metric"><span>Games planned</span><b>${total || '-'}</b><small>${settings.playBothSides ? 'Role-swap on' : 'Single side'}</small></div>
+    <div class="metric"><span>Bot A clock</span><b>${formatMs(settings.botATimeLimitMs)}</b><small>per game</small></div>
+    <div class="metric"><span>Bot B clock</span><b>${formatMs(settings.botBTimeLimitMs)}</b><small>per game</small></div>
     <div class="metric"><span>Seed base</span><b>${escapeHtml(shortSeed(settings.seedBase || 'random'))}</b><small>Generated at start</small></div>
   `;
   standingsBox.innerHTML = '<div class="emptyState">Standings sẽ hiện sau game đầu tiên.</div>';
@@ -290,12 +306,10 @@ function renderDatasets(games, settings) {
     grouped.get(g.datasetIndex).push(g);
   }
 
-  const datasetCount = settings.datasetCount || grouped.size;
-  const cards = [];
-  for (let i = 0; i < datasetCount; i++) {
-    const list = grouped.get(i) || [];
-    cards.push(renderDatasetCard(i, list, settings));
-  }
+  const cards = [...grouped.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([datasetIndex, list]) => renderDatasetCard(datasetIndex, list, settings));
+
   datasetGroups.innerHTML = cards.join('');
 }
 
@@ -312,12 +326,31 @@ function renderDatasetCard(datasetIndex, games, settings) {
   }
 
   const sorted = games.slice().sort((a, b) => a.gameIndex - b.gameIndex);
+  const expectedGames = settings.playBothSides ? 2 : 1;
+  const isPartial = sorted.length < expectedGames;
   const aTotal = sorted.reduce((sum, g) => sum + Number(g.botAScore || 0), 0);
   const bTotal = sorted.reduce((sum, g) => sum + Number(g.botBScore || 0), 0);
-  const setClass = aTotal > bTotal ? 'good' : bTotal > aTotal ? 'bad' : 'draw';
-  const setText = aTotal > bTotal ? 'A wins dataset' : bTotal > aTotal ? 'B wins dataset' : 'Dataset draw';
+  const setClass = isPartial ? 'neutral' : aTotal > bTotal ? 'good' : bTotal > aTotal ? 'bad' : 'draw';
+  const setText = isPartial
+    ? `${sorted.length}/${expectedGames} games done`
+    : aTotal > bTotal ? 'A wins dataset' : bTotal > aTotal ? 'B wins dataset' : 'Dataset draw';
   const seed = sorted[0]?.seed || '';
-  const bodyClass = sorted.length === 1 ? 'singleOnly' : '';
+  const bodyClass = expectedGames === 1 && sorted.length === 1 ? 'singleOnly' : '';
+  const missingSwapCard = settings.playBothSides && sorted.length === 1
+    ? `
+        <div class="gameCard">
+          <div class="gameTop">
+            <div>
+              <h4>${sorted[0].aRole === 0 ? 'Game 2 · Đảo lượt' : 'Game 1 · Lượt gốc'}</h4>
+              <div class="roleLine">Đợi game còn lại của dataset này</div>
+            </div>
+            <span class="pill neutral">PENDING</span>
+          </div>
+          <div class="metaRow">
+            <span>Game đầu đã xong, card này sẽ tự update ngay khi game kế tiếp kết thúc.</span>
+          </div>
+        </div>`
+    : '';
 
   return `
     <article class="datasetCard">
@@ -331,13 +364,14 @@ function renderDatasetCard(datasetIndex, games, settings) {
       </div>
       <div class="datasetBody ${bodyClass}">
         ${sorted.map((g, idx) => renderGameCard(g, idx, sorted.length, settings)).join('')}
+        ${missingSwapCard}
       </div>
     </article>`;
 }
 
 function renderGameCard(g, idxInDataset, totalInDataset, settings) {
   const isSwap = g.aRole === 1;
-  const title = totalInDataset > 1
+  const title = settings.playBothSides || totalInDataset > 1
     ? (isSwap ? 'Game 2 · Đảo lượt' : 'Game 1 · Lượt gốc')
     : `Game ${g.gameIndex + 1}`;
   const roleLine = isSwap
@@ -626,6 +660,24 @@ function appendEvents(events) {
   eventsPre.scrollTop = eventsPre.scrollHeight;
 }
 
+function syncSetupPreview() {
+  const datasetCount = readPositiveNumber(datasetCountInput?.value, 30);
+  const botATimeLimitMs = readPositiveNumber(botATimeLimitInput?.value, 30000);
+  const botBTimeLimitMs = readPositiveNumber(botBTimeLimitInput?.value, 30000);
+  if (heroDatasetCount) heroDatasetCount.textContent = String(datasetCount);
+  if (heroBotClocks) heroBotClocks.textContent = `${formatCompactMs(botATimeLimitMs)} / ${formatCompactMs(botBTimeLimitMs)}`;
+  if (heroProcessLimit) {
+    const processLimitMs = botATimeLimitMs + botBTimeLimitMs + DEFAULT_READY_TIMEOUT_MS * 2 + PROCESS_TIME_LIMIT_GRACE_MS;
+    heroProcessLimit.textContent = formatCompactMs(processLimitMs);
+  }
+}
+
+function readPositiveNumber(value, fallback) {
+  const n = Math.floor(Number(value));
+  if (!Number.isFinite(n) || n <= 0) return fallback;
+  return n;
+}
+
 function shortName(name) {
   const clean = String(name || '').replace(/^A_/, '').replace(/^B_/, '');
   if (clean.length <= 26) return clean;
@@ -655,6 +707,14 @@ function formatMs(ms) {
   const n = Number(ms);
   if (!Number.isFinite(n)) return 'n/a';
   if (n >= 1000) return `${(n / 1000).toFixed(2)}s`;
+  return `${Math.round(n)}ms`;
+}
+
+function formatCompactMs(ms) {
+  const n = Number(ms);
+  if (!Number.isFinite(n)) return 'n/a';
+  if (n >= 1000 && n % 1000 === 0) return `${Math.round(n / 1000)}s`;
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}s`;
   return `${Math.round(n)}ms`;
 }
 

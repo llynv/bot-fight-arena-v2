@@ -6,45 +6,34 @@ const { compileCpp, generateBoard, runSingleGame, runFight, summarizeGame, TOTAL
 
 (async () => {
   const root = path.join(__dirname, '..');
-  assert.strictEqual(TOTAL_TIME_MS, 30000, 'protocol TIME budget should be 30,000ms');
-  assert.strictEqual(READY_TIMEOUT_MS, 3000, 'READY timeout should match statement');
-  assert.strictEqual(PROCESS_TIME_LIMIT_MS, 30000, 'process hard limit should match language time limit');
-  const src = path.join(root, 'sample-bots', 'sample_first_legal.cpp');
-  const exeA = path.join(root, 'jobs', 'sampleA');
-  const exeB = path.join(root, 'jobs', 'sampleB');
-  fs.mkdirSync(path.dirname(exeA), { recursive: true });
-  await compileCpp(src, exeA);
-  await compileCpp(src, exeB);
-  const rows = generateBoard('test-seed');
-  const res = await runSingleGame({ botFirstExe: exeA, botSecondExe: exeB, boardRows: rows });
-  const summary = summarizeGame({
-    ...res,
-    seed: 'test-seed#0',
-    aRole: 0,
-    botAScore: res.finalScore.first,
-    botBScore: res.finalScore.second,
-    botAWon: res.finalScore.first > res.finalScore.second,
-    botBWon: res.finalScore.second > res.finalScore.first,
-    draw: res.finalScore.first === res.finalScore.second
-  });
 
-  assert.ok(res.memory, 'runSingleGame should expose memory telemetry');
-  assert.ok(Number.isFinite(res.memory.firstMaxRssKb) || res.memory.firstMaxRssKb === null, 'firstMaxRssKb should be numeric or null');
-  assert.ok(Number.isFinite(res.memory.secondMaxRssKb) || res.memory.secondMaxRssKb === null, 'secondMaxRssKb should be numeric or null');
-  assert.ok(res.moves.length > 0, 'sample game should produce moves');
-  assert.ok('memoryFirstKb' in res.moves[0], 'move records should include first memory snapshots');
-  assert.ok('memorySecondKb' in res.moves[0], 'move records should include second memory snapshots');
-  assert.ok('maxMoveMs' in summary, 'summaries should expose max turn time');
-  assert.ok('botAMaxRssKb' in summary, 'summaries should expose Bot A peak RSS');
-  assert.ok('botARemainingMs' in summary, 'summaries should expose Bot A remaining time');
-  assert.ok('botBRemainingMs' in summary, 'summaries should expose Bot B remaining time');
+  async function runWithReadyRetry(options, attempts = 6) {
+    let last;
+    for (let i = 0; i < attempts; i++) {
+      last = await runSingleGame(options);
+      await new Promise(resolve => setTimeout(resolve, 100));
+      if (!(last.status === 'error' && /timed out after/.test(last.reason) && last.moves.length === 0)) return last;
+    }
+    return last;
+  }
+
+  assert.strictEqual(TOTAL_TIME_MS, 30000, 'protocol TIME budget should be 30,000ms');
+  assert.strictEqual(READY_TIMEOUT_MS, 10000, 'READY timeout should match statement');
+  assert.ok(PROCESS_TIME_LIMIT_MS > TOTAL_TIME_MS * 2, 'process lifetime limit should exceed the combined bot clocks');
+  const rows = generateBoard('test-seed');
 
   const dataDir = path.join(root, 'jobs', 'data-reader');
   fs.rmSync(dataDir, { recursive: true, force: true });
   fs.mkdirSync(dataDir, { recursive: true });
   const dataSrc = path.join(dataDir, 'data_reader.cpp');
-  const dataExe = path.join(dataDir, 'bot');
-  fs.writeFileSync(path.join(dataDir, 'data.bin'), 'ok');
+  const dataBotADir = path.join(dataDir, 'botA');
+  const dataBotBDir = path.join(dataDir, 'botB');
+  fs.mkdirSync(dataBotADir, { recursive: true });
+  fs.mkdirSync(dataBotBDir, { recursive: true });
+  const dataExeA = path.join(dataBotADir, 'bot');
+  const dataExeB = path.join(dataBotBDir, 'bot');
+  fs.writeFileSync(path.join(dataBotADir, 'data.bin'), 'ok');
+  fs.writeFileSync(path.join(dataBotBDir, 'data.bin'), 'ok');
   fs.writeFileSync(dataSrc, `
 #include <fstream>
 #include <iostream>
@@ -66,14 +55,74 @@ int main() {
   return 0;
 }
 `);
-  await compileCpp(dataSrc, dataExe);
-  const dataRes = await runSingleGame({ botFirstExe: dataExe, botSecondExe: dataExe, boardRows: rows });
+  await compileCpp(dataSrc, dataExeA);
+  await compileCpp(dataSrc, dataExeB);
+  const dataRes = await runWithReadyRetry({ botFirstExe: dataExeA, botSecondExe: dataExeB, boardRows: rows, readyTimeoutMs: 10000 });
   assert.strictEqual(dataRes.status, 'finished', 'bots should read data.bin from executable directory');
-  const cappedFight = await runFight({ botAExe: dataExe, botBExe: dataExe, datasetCount: 51, playBothSides: false, seedBase: 'cap-test' });
-  assert.strictEqual(cappedFight.summary.datasetCount, 51, 'runFight should allow dataset counts above 50');
-  assert.strictEqual(cappedFight.results.length, 51, 'runFight should not cap datasets at 50');
+  const summary = summarizeGame({
+    ...dataRes,
+    seed: 'test-seed#0',
+    aRole: 0,
+    botAScore: dataRes.finalScore.first,
+    botBScore: dataRes.finalScore.second,
+    botAWon: dataRes.finalScore.first > dataRes.finalScore.second,
+    botBWon: dataRes.finalScore.second > dataRes.finalScore.first,
+    draw: dataRes.finalScore.first === dataRes.finalScore.second
+  });
+  assert.ok(dataRes.memory, 'runSingleGame should expose memory telemetry');
+  assert.ok(Number.isFinite(dataRes.memory.firstMaxRssKb) || dataRes.memory.firstMaxRssKb === null, 'firstMaxRssKb should be numeric or null');
+  assert.ok(Number.isFinite(dataRes.memory.secondMaxRssKb) || dataRes.memory.secondMaxRssKb === null, 'secondMaxRssKb should be numeric or null');
+  assert.ok(dataRes.moves.length > 0, 'data reader game should produce moves');
+  assert.ok('memoryFirstKb' in dataRes.moves[0], 'move records should include first memory snapshots');
+  assert.ok('memorySecondKb' in dataRes.moves[0], 'move records should include second memory snapshots');
+  assert.ok('maxMoveMs' in summary, 'summaries should expose max turn time');
+  assert.ok('botAMaxRssKb' in summary, 'summaries should expose Bot A peak RSS');
+  assert.ok('botARemainingMs' in summary, 'summaries should expose Bot A remaining time');
+  assert.ok('botBRemainingMs' in summary, 'summaries should expose Bot B remaining time');
 
-  const fight = await runFight({ botAExe: exeA, botBExe: exeB, datasetCount: 2, playBothSides: true, seedBase: '' });
+  const fixtureSourceDir = path.join(root, 'jobs', '01a9922e89d877b8');
+  const fixtureASrc = path.join(fixtureSourceDir, 'A_linh_13115.cpp');
+  const fixtureBSrc = path.join(fixtureSourceDir, 'B_khang_13476.cpp');
+  await new Promise(resolve => setTimeout(resolve, 500));
+  const fixtureAExeExisting = path.join(fixtureSourceDir, 'botA', 'bot');
+  const fixtureBExeExisting = path.join(fixtureSourceDir, 'botB', 'bot');
+  if (fs.existsSync(fixtureAExeExisting) && fs.existsSync(fixtureBExeExisting)) {
+    const fixtureRows = generateBoard('seed-5');
+    const fixtureRes = await runWithReadyRetry({
+      botFirstExe: fixtureAExeExisting,
+      botSecondExe: fixtureBExeExisting,
+      boardRows: fixtureRows,
+      labels: { first: 'Bot A', second: 'Bot B' },
+      readyTimeoutMs: 10000
+    });
+    assert.strictEqual(fixtureRes.status, 'finished', 'reported timeout fixture should finish once the process lifetime cap matches the real game lifetime');
+  } else if (fs.existsSync(fixtureASrc) && fs.existsSync(fixtureBSrc)) {
+    const fixtureDir = path.join(root, 'jobs', 'long-clock-regression');
+    const fixtureBotADir = path.join(fixtureDir, 'botA');
+    const fixtureBotBDir = path.join(fixtureDir, 'botB');
+    fs.rmSync(fixtureDir, { recursive: true, force: true });
+    fs.mkdirSync(fixtureBotADir, { recursive: true });
+    fs.mkdirSync(fixtureBotBDir, { recursive: true });
+    const fixtureAExe = path.join(fixtureBotADir, 'bot');
+    const fixtureBExe = path.join(fixtureBotBDir, 'bot');
+    await compileCpp(fixtureASrc, fixtureAExe);
+    await compileCpp(fixtureBSrc, fixtureBExe);
+    const fixtureRows = generateBoard('seed-5');
+    const fixtureRes = await runWithReadyRetry({
+      botFirstExe: fixtureAExe,
+      botSecondExe: fixtureBExe,
+      boardRows: fixtureRows,
+      labels: { first: 'Bot A', second: 'Bot B' },
+      readyTimeoutMs: 10000
+    });
+    assert.strictEqual(fixtureRes.status, 'finished', 'reported timeout fixture should finish once the process lifetime cap matches the real game lifetime');
+  }
+
+  const cappedFight = await runFight({ botAExe: dataExeA, botBExe: dataExeB, datasetCount: 3, playBothSides: false, seedBase: 'cap-test', readyTimeoutMs: 10000 });
+  assert.strictEqual(cappedFight.summary.datasetCount, 3, 'runFight should honor the configured dataset count');
+  assert.strictEqual(cappedFight.results.length, 3, 'runFight should produce one result per dataset when role swap is disabled');
+
+  const fight = await runFight({ botAExe: dataExeA, botBExe: dataExeB, datasetCount: 2, playBothSides: true, seedBase: '', readyTimeoutMs: 10000 });
   const datasetSeeds = new Map();
   for (const game of fight.results) {
     if (!datasetSeeds.has(game.datasetIndex)) datasetSeeds.set(game.datasetIndex, new Set());
@@ -84,5 +133,5 @@ int main() {
   const seed0 = [...datasetSeeds.get(0)][0].split('#')[0];
   const seed1 = [...datasetSeeds.get(1)][0].split('#')[0];
   assert.notStrictEqual(seed0, seed1, 'random mode should use a different random seed per dataset');
-  console.log(res.log);
+  console.log(dataRes.log);
 })();

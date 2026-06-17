@@ -5,7 +5,7 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { compileCpp, runFight, summarizeGame } = require('./src/gameEngine');
+const { compileCpp, runFight, summarizeGame, TOTAL_TIME_MS } = require('./src/gameEngine');
 
 const app = express();
 const PORT = Number(process.env.PORT || 5001);
@@ -61,6 +61,13 @@ function safeName(name) {
   return String(name || 'bot.cpp').replace(/[^a-zA-Z0-9_.-]/g, '_').slice(0, 80);
 }
 
+function clampInt(value, fallback, min, max) {
+  if (value === null || value === undefined || value === '') return fallback;
+  const n = Math.floor(Number(value));
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(min, Math.min(max, n));
+}
+
 function makeJob() {
   const id = crypto.randomBytes(8).toString('hex');
   const dir = path.join(JOB_DIR, id);
@@ -111,13 +118,17 @@ app.post('/api/start', upload.fields([{ name: 'botA', maxCount: 1 }, { name: 'bo
   const botAData = files.botAData?.[0] || null;
   const botBData = files.botBData?.[0] || null;
 
-  const datasetCount = Math.max(20, Math.min(1000, Number(req.body.datasetCount || 20)));
+  const datasetCount = clampInt(req.body.datasetCount, 30, 1, 1000);
+  const botATimeLimitMs = clampInt(req.body.botATimeLimitMs, TOTAL_TIME_MS, 1000, 600000);
+  const botBTimeLimitMs = clampInt(req.body.botBTimeLimitMs, TOTAL_TIME_MS, 1000, 600000);
   const playBothSides = req.body.playBothSides === 'true' || req.body.playBothSides === 'on' || req.body.playBothSides === true;
   const seedBase = String(req.body.seedBase || '').trim();
 
   const job = makeJob();
   job.settings = {
     datasetCount,
+    botATimeLimitMs,
+    botBTimeLimitMs,
     playBothSides,
     seedBase: seedBase || '(per-dataset random)',
     botAName: files.botA[0].originalname,
@@ -160,6 +171,8 @@ app.post('/api/start', upload.fields([{ name: 'botA', maxCount: 1 }, { name: 'bo
         botAExe,
         botBExe,
         datasetCount,
+        botATimeLimitMs,
+        botBTimeLimitMs,
         playBothSides,
         seedBase,
         onEvent: ev => addEvent(job, ev),
