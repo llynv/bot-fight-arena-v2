@@ -80,6 +80,97 @@ int main() {
   assert.ok('botARemainingMs' in summary, 'summaries should expose Bot A remaining time');
   assert.ok('botBRemainingMs' in summary, 'summaries should expose Bot B remaining time');
 
+  const timeoutDir = path.join(root, 'jobs', 'timeout-regression');
+  fs.rmSync(timeoutDir, { recursive: true, force: true });
+  fs.mkdirSync(timeoutDir, { recursive: true });
+  const timeoutSrc = path.join(timeoutDir, 'timeout_bot.cpp');
+  const timeoutBotADir = path.join(timeoutDir, 'botA');
+  const timeoutBotBDir = path.join(timeoutDir, 'botB');
+  fs.mkdirSync(timeoutBotADir, { recursive: true });
+  fs.mkdirSync(timeoutBotBDir, { recursive: true });
+  const timeoutExeA = path.join(timeoutBotADir, 'bot');
+  const timeoutExeB = path.join(timeoutBotBDir, 'bot');
+  fs.writeFileSync(timeoutSrc, `
+#include <chrono>
+#include <iostream>
+#include <string>
+#include <thread>
+int main() {
+  std::string line;
+  while (std::getline(std::cin, line)) {
+    if (line.rfind("READY", 0) == 0) {
+      std::cout << "OK" << std::endl;
+    } else if (line.rfind("TIME", 0) == 0) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(700));
+      std::cout << "-1 -1 -1 -1" << std::endl;
+    } else if (line == "FINISH") {
+      return 0;
+    }
+  }
+  return 0;
+ }
+ `);
+  await compileCpp(timeoutSrc, timeoutExeA);
+  await compileCpp(timeoutSrc, timeoutExeB);
+  const timeoutRes = await runSingleGame({
+    botFirstExe: timeoutExeA,
+    botSecondExe: dataExeB,
+    boardRows: rows,
+    labels: { first: 'Bot A', second: 'Bot B' },
+    timeLimitsMs: { first: 100, second: 100 },
+    readyTimeoutMs: 1000
+  });
+  assert.strictEqual(timeoutRes.status, 'timeout', 'turn timeout should report timeout status');
+  assert.strictEqual(timeoutRes.winner, 1, 'timed out bot should lose the game');
+
+  const timeoutFight = await runFight({
+    botAExe: timeoutExeA,
+    botBExe: dataExeB,
+    datasetCount: 1,
+    playBothSides: false,
+    seedBase: 'timeout-summary',
+    botATimeLimitMs: 100,
+    botBTimeLimitMs: 100,
+    readyTimeoutMs: 1000
+  });
+  assert.strictEqual(timeoutFight.results[0].status, 'timeout', 'fight result should preserve timeout status');
+  assert.strictEqual(timeoutFight.summary.botA.losses, 1, 'timed out Bot A should be counted as a loss');
+  assert.strictEqual(timeoutFight.summary.botB.wins, 1, 'opponent should get the win on timeout');
+  assert.strictEqual(timeoutFight.summary.botA.draws, 0, 'timeout should not be counted as a draw');
+
+  const readyTimeoutSrc = path.join(timeoutDir, 'ready_timeout_bot.cpp');
+  const readyTimeoutBotDir = path.join(timeoutDir, 'botReadyTimeout');
+  fs.mkdirSync(readyTimeoutBotDir, { recursive: true });
+  const readyTimeoutExe = path.join(readyTimeoutBotDir, 'bot');
+  fs.writeFileSync(readyTimeoutSrc, `
+#include <chrono>
+#include <iostream>
+#include <string>
+#include <thread>
+int main() {
+  std::string line;
+  while (std::getline(std::cin, line)) {
+    if (line.rfind("READY", 0) == 0) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(700));
+      std::cout << "OK" << std::endl;
+    } else if (line == "FINISH") {
+      return 0;
+    }
+  }
+  return 0;
+ }
+ `);
+  await compileCpp(readyTimeoutSrc, readyTimeoutExe);
+  const readyTimeoutRes = await runSingleGame({
+    botFirstExe: readyTimeoutExe,
+    botSecondExe: dataExeB,
+    boardRows: rows,
+    labels: { first: 'Bot A', second: 'Bot B' },
+    readyTimeoutMs: 200
+  });
+  assert.strictEqual(readyTimeoutRes.status, 'timeout', 'READY timeout should be treated as a timeout result');
+  assert.strictEqual(readyTimeoutRes.winner, 1, 'bot timing out during READY should lose');
+
   const fixtureSourceDir = path.join(root, 'jobs', '01a9922e89d877b8');
   const fixtureASrc = path.join(fixtureSourceDir, 'A_linh_13115.cpp');
   const fixtureBSrc = path.join(fixtureSourceDir, 'B_khang_13476.cpp');

@@ -497,7 +497,15 @@ async function runSingleGame({ botFirstExe, botSecondExe, boardRows, datasetInde
     return detail.join(' · ');
   };
 
-  const waitForReady = async (proc, readyLine, role) => {
+  const makeReadyFailure = async (proc, role, roleIndex, err) => {
+    const failure = new Error(await readyFailureDetail(proc, role, err));
+    failure.code = err?.code || 'READY_FAILED';
+    failure.role = role;
+    failure.roleIndex = roleIndex;
+    return failure;
+  };
+
+  const waitForReady = async (proc, readyLine, role, roleIndex) => {
     proc.start();
     await proc.sampleMemory();
     proc.send(readyLine);
@@ -508,13 +516,13 @@ async function runSingleGame({ botFirstExe, botSecondExe, boardRows, datasetInde
       }
       return line;
     } catch (err) {
-      throw new Error(await readyFailureDetail(proc, role, err));
+      throw await makeReadyFailure(proc, role, roleIndex, err);
     }
   };
 
   try {
-    await waitForReady(first, 'READY FIRST', labels.first || 'FIRST');
-    await waitForReady(second, 'READY SECOND', labels.second || 'SECOND');
+    await waitForReady(first, 'READY FIRST', labels.first || 'FIRST', 0);
+    await waitForReady(second, 'READY SECOND', labels.second || 'SECOND', 1);
 
     const initLine = `INIT ${boardRows.join(' ')}`;
     first.send(initLine);
@@ -607,8 +615,18 @@ async function runSingleGame({ botFirstExe, botSecondExe, boardRows, datasetInde
       turn = 1 - turn;
     }
   } catch (e) {
-    status = 'error';
-    reason = e.message;
+    if (e?.code === 'READ_TIMEOUT' && Number.isInteger(e?.roleIndex)) {
+      status = 'timeout';
+      reason = `${e.role} timeout: ${e.message}`;
+      winner = 1 - e.roleIndex;
+    } else if (e?.code === 'PROCESS_LIMIT' && Number.isInteger(e?.roleIndex)) {
+      status = 'process_limit';
+      reason = `${e.role} process limit: ${e.message}`;
+      winner = 1 - e.roleIndex;
+    } else {
+      status = 'error';
+      reason = e.message;
+    }
   } finally {
     await Promise.allSettled([first.sampleMemory(), second.sampleMemory()]);
     try { first.stop(); } catch (_) {}
@@ -708,9 +726,11 @@ async function runFight({ botAExe, botBExe, datasetCount, playBothSides = true, 
       res.aRole = pairing.aRole;
       res.botAScore = pairing.aRole === 0 ? res.finalScore.first : res.finalScore.second;
       res.botBScore = pairing.aRole === 0 ? res.finalScore.second : res.finalScore.first;
-      res.botAWon = res.botAScore > res.botBScore;
-      res.botBWon = res.botBScore > res.botAScore;
-      res.draw = res.botAScore === res.botBScore;
+      const botAWinnerIndex = pairing.aRole === 0 ? 0 : 1;
+      const botBWinnerIndex = 1 - botAWinnerIndex;
+      res.botAWon = res.winner === botAWinnerIndex;
+      res.botBWon = res.winner === botBWinnerIndex;
+      res.draw = res.winner === -1;
       results.push(res);
       onGameResult?.(res);
 
