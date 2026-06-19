@@ -88,6 +88,56 @@ let selectedTurn = 0;
 let currentGameDetail = null;
 let detailRequestSeq = 0;
 let tournamentStandingsSort = { key: 'matchLossPct', dir: 'asc' };
+
+// --- game renderer plugins (window.ArenaGames[gameId]) ---
+const loadedRenderers = new Set(['mushroom']);
+
+function activeRenderer() {
+  const id = currentJob?.gameId || 'mushroom';
+  const games = window.ArenaGames || {};
+  return games[id] || games.mushroom;
+}
+
+function scoreNoun() {
+  return activeRenderer()?.meta?.scoreNoun || 'pts';
+}
+
+const gameSelect = document.getElementById('gameSelect');
+const gameSelectField = document.getElementById('gameSelectField');
+
+function selectedGameId() {
+  return gameSelect?.value || 'mushroom';
+}
+
+// Populate the game picker from the server registry. Hidden when only one game
+// exists, shown automatically once a second game is registered.
+async function loadGames() {
+  try {
+    const res = await fetch('/api/games');
+    if (!res.ok) return;
+    const { games = [], defaultGameId } = await res.json();
+    if (!games.length || !gameSelect) return;
+    gameSelect.innerHTML = games.map(g => `<option value="${g.id}">${escapeHtml(g.name)}</option>`).join('');
+    gameSelect.value = defaultGameId || games[0].id;
+    if (games.length > 1) gameSelectField?.classList.remove('hidden');
+    await Promise.all(games.map(g => ensureRenderer(g.id)));
+  } catch (_) { /* single-game default still works */ }
+}
+
+// Lazily inject a game's renderer the first time we see its gameId, so a new
+// game needs only public/games/<id>/renderer.js — no index.html edit.
+function ensureRenderer(gameId) {
+  return new Promise(resolve => {
+    const games = window.ArenaGames || {};
+    if (!gameId || games[gameId] || loadedRenderers.has(gameId)) return resolve();
+    loadedRenderers.add(gameId);
+    const script = document.createElement('script');
+    script.src = `/games/${gameId}/renderer.js`;
+    script.onload = () => resolve();
+    script.onerror = () => resolve();
+    document.head.appendChild(script);
+  });
+}
 let selectedSimulationIndex = null;
 let selectedPair = null;
 let currentSimulationDetail = null;
@@ -166,6 +216,7 @@ nextTurn?.addEventListener('click', () => {
 
 syncModeVisibility();
 syncSetupPreview();
+loadGames();
 
 function updateFileName(input, target, emptyText = 'Chưa chọn file') {
   const file = input.files?.[0];
@@ -241,6 +292,7 @@ form.addEventListener('submit', async (e) => {
     const mode = modeSelect?.value || 'duel';
     const duelMode = mode === 'duel';
     const fd = duelMode ? new FormData(form) : buildTournamentFormData(mode);
+    fd.set('gameId', selectedGameId());
     const endpoint = duelMode ? '/api/start' : '/api/tournaments/start';
     const res = await fetch(endpoint, { method: 'POST', body: fd });
     const data = await res.json();
@@ -329,6 +381,7 @@ async function pollJob() {
   if (!jobRes.ok) throw new Error(job.error || 'Job not found');
 
   currentJob = job;
+  await ensureRenderer(job.gameId);
   renderJob(job);
   if (ev.events) {
     eventCursor = ev.next;
@@ -622,7 +675,7 @@ function renderTournamentStandings(rows) {
   table.innerHTML = `
     <thead>
       <tr>
-        <th>${sortButton('rank', 'Rank')}</th><th>${sortButton('name', 'Bot')}</th><th>${sortButton('matchWinPct', 'Match W%')}</th><th>${sortButton('matchDrawPct', 'D%')}</th><th>${sortButton('matchLossPct', 'L%')}</th><th>${sortButton('gameWinPct', 'Game W%')}</th><th>${sortButton('gameDrawPct', 'D%')}</th><th>${sortButton('gameLossPct', 'L%')}</th><th>${sortButton('avgMatchScore', 'Avg match')}</th><th>${sortButton('eloCurrent', 'Elo')}</th><th>${sortButton('eloAverage', 'Elo avg')}</th><th>${sortButton('avgCellsDiff', 'Cells avg')}</th><th>P10/P90</th><th>${sortButton('firstWinPct', 'First W%')}</th><th>${sortButton('secondWinPct', 'Second W%')}</th><th>${sortButton('powerScore', 'Power')}</th><th>${sortButton('safetyScore', 'Safety')}</th><th>${sortButton('stabilityScore', 'Stability')}</th><th>${sortButton('nonOkRate', 'Non-ok')}</th><th>Badges</th>
+        <th>${sortButton('rank', 'Rank')}</th><th>${sortButton('name', 'Bot')}</th><th>${sortButton('matchWinPct', 'Match W%')}</th><th>${sortButton('matchDrawPct', 'D%')}</th><th>${sortButton('matchLossPct', 'L%')}</th><th>${sortButton('gameWinPct', 'Game W%')}</th><th>${sortButton('gameDrawPct', 'D%')}</th><th>${sortButton('gameLossPct', 'L%')}</th><th>${sortButton('avgMatchScore', 'Avg match')}</th><th>${sortButton('eloCurrent', 'Elo')}</th><th>${sortButton('eloAverage', 'Elo avg')}</th><th>${sortButton('avgCellsDiff', `${scoreNoun()} avg`)}</th><th>P10/P90</th><th>${sortButton('firstWinPct', 'First W%')}</th><th>${sortButton('secondWinPct', 'Second W%')}</th><th>${sortButton('powerScore', 'Power')}</th><th>${sortButton('safetyScore', 'Safety')}</th><th>${sortButton('stabilityScore', 'Stability')}</th><th>${sortButton('nonOkRate', 'Non-ok')}</th><th>Badges</th>
       </tr>
     </thead>
     <tbody>
@@ -688,7 +741,7 @@ function renderMatchList(rows) {
         <span>${escapeHtml(shortSeed(match.datasetSeed || ''))}</span>
         <span>score ${formatNumber(match.scoreA)}:${formatNumber(match.scoreB)}</span>
         <span>${escapeHtml(match.classificationA || '')}</span>
-        <span>cells ${formatNumber(match.cellsDiffA)}</span>
+        <span>${scoreNoun()} ${formatNumber(match.cellsDiffA)}</span>
       </div>
       <div class="matchMeta">
         ${(match.games || []).map(game => `<button class="logBtn" type="button" data-game-index="${game.gameIndex}">Inspect game ${game.gameIndex + 1}</button>`).join(' ')}
@@ -736,7 +789,7 @@ function renderSimulationDetail(simulations, matches) {
                 <span>score ${formatNumber(match.scoreA)}:${formatNumber(match.scoreB)}</span>
                 <span>${escapeHtml(match.classificationA || '')}</span>
                 <span>${escapeHtml(shortSeed(match.datasetSeed || ''))}</span>
-                <span>cells ${formatSigned(match.cellsDiffA)}</span>
+                <span>${scoreNoun()} ${formatSigned(match.cellsDiffA)}</span>
                 ${match.repeatPairing ? '<span>repeat pairing</span>' : ''}
                 ${match.nonOkCount ? `<span>non-ok ${match.nonOkCount}</span>` : ''}
               </div>
@@ -821,7 +874,7 @@ function renderPairDetail(matches) {
                 <span>${escapeHtml(shortSeed(match.datasetSeed || ''))}</span>
                 <span>score ${formatNumber(rowPerspective.score)}</span>
                 <span>${escapeHtml(rowPerspective.cls || '')}</span>
-                <span>cells ${formatSigned(rowPerspective.diff)}</span>
+                <span>${scoreNoun()} ${formatSigned(rowPerspective.diff)}</span>
                 ${match.nonOkCount ? `<span>non-ok ${match.nonOkCount}</span>` : ''}
               </div>
               <div class="detailMeta">
@@ -889,7 +942,7 @@ function renderPairMatrixCell(rowId, colId, matrix) {
   const winPct = cell.matches ? cell.aWins / cell.matches : 0;
   const cls = avgScore > 1.05 ? 'good' : avgScore < 0.95 ? 'bad' : 'draw';
   const active = selectedPair && selectedPair.rowId === rowId && selectedPair.colId === colId ? ' active' : '';
-  return `<td><button class="matrixCell ${cls}${active}" type="button" data-matrix-row="${rowId}" data-matrix-col="${colId}" title="wins ${cell.aWins}, draws ${cell.draws}, losses ${cell.aLosses}, non-ok ${cell.nonOk}"><b>${formatPct(winPct)} W</b><br/>avg ${formatNumber(avgScore)}<br/>${formatSigned(avgDiff)} cells<br/>n=${cell.matches}<small>${cell.aWins}-${cell.draws}-${cell.aLosses} · non-ok ${cell.nonOk}</small></button></td>`;
+  return `<td><button class="matrixCell ${cls}${active}" type="button" data-matrix-row="${rowId}" data-matrix-col="${colId}" title="wins ${cell.aWins}, draws ${cell.draws}, losses ${cell.aLosses}, non-ok ${cell.nonOk}"><b>${formatPct(winPct)} W</b><br/>avg ${formatNumber(avgScore)}<br/>${formatSigned(avgDiff)} ${scoreNoun()}<br/>n=${cell.matches}<small>${cell.aWins}-${cell.draws}-${cell.aLosses} · non-ok ${cell.nonOk}</small></button></td>`;
 }
 
 tournamentStandingsWrap?.addEventListener('click', (e) => {
@@ -1000,8 +1053,8 @@ function renderSummary(s) {
   const lead = s.botA.totalScore - s.botB.totalScore;
   const leader = lead > 0 ? 'Bot A đang dẫn' : lead < 0 ? 'Bot B đang dẫn' : 'Đang hòa điểm';
   summaryBox.innerHTML = `
-    <div class="metric"><span>Bot A W/D/L</span><b>${s.botA.wins}/${s.botA.draws}/${s.botA.losses}</b><small>${s.botA.totalScore} total cells</small></div>
-    <div class="metric"><span>Bot B W/D/L</span><b>${s.botB.wins}/${s.botB.draws}/${s.botB.losses}</b><small>${s.botB.totalScore} total cells</small></div>
+    <div class="metric"><span>Bot A W/D/L</span><b>${s.botA.wins}/${s.botA.draws}/${s.botA.losses}</b><small>${s.botA.totalScore} total ${scoreNoun()}</small></div>
+    <div class="metric"><span>Bot B W/D/L</span><b>${s.botB.wins}/${s.botB.draws}/${s.botB.losses}</b><small>${s.botB.totalScore} total ${scoreNoun()}</small></div>
     <div class="metric"><span>Total score A:B</span><b>${s.botA.totalScore}:${s.botB.totalScore}</b><small>${leader}</small></div>
     <div class="metric"><span>Games</span><b>${s.gamesDone}/${s.gamesTotal}</b><small>${s.playBothSides ? 'role-swap enabled' : 'single side'}</small></div>
   `;
@@ -1023,7 +1076,7 @@ function standingCard(label, name, bot, diff) {
     <div class="standingCard">
       <div class="standingTop">
         <div class="standingName"><span class="avatar ${label.toLowerCase()}">${label}</span><span>${escapeHtml(name)}</span></div>
-        <span class="pill ${diffClass}">${diffText} cells</span>
+        <span class="pill ${diffClass}">${diffText} ${scoreNoun()}</span>
       </div>
       <div class="record">
         <div><small>Wins</small><b>${bot.wins}</b></div>
@@ -1323,17 +1376,9 @@ function renderReplay() {
   nextTurn.disabled = selectedTurn >= maxTurn;
   turnLabel.textContent = selectedTurn === 0 ? 'Initial board' : `After turn ${selectedTurn} / ${maxTurn}`;
 
-  const state = buildReplayState(g, selectedTurn);
-  const lastMove = selectedTurn > 0 ? g.moves[selectedTurn - 1] : null;
-  boardGrid.innerHTML = state.originals.map((digit, idx) => {
-    const r = Math.floor(idx / 17);
-    const c = idx % 17;
-    const owner = state.owners[idx];
-    const ownerClass = owner === 0 ? ' firstOwned' : owner === 1 ? ' secondOwned' : '';
-    const active = lastMove && !lastMove.move.pass && inRect(r, c, lastMove.move) ? ' activeRect' : '';
-    const title = owner === -1 ? `r${r} c${c} · value ${digit}` : `r${r} c${c} · ${botNameForPlayer(g, owner)} owns value ${digit}`;
-    return `<span class="boardCell${ownerClass}${active}" role="gridcell" title="${escapeHtml(title)}">${digit}</span>`;
-  }).join('');
+  boardGrid.innerHTML = activeRenderer().renderBoard(g, selectedTurn, {
+    ownerName: owner => botNameForPlayer(g, owner)
+  });
 
   turnDetails.innerHTML = renderTurnDetail(g, selectedTurn);
 }
@@ -1379,7 +1424,7 @@ function renderTurnDetail(g, turn) {
   const m = g.moves[turn - 1];
   const playerName = botNameForPlayer(g, m.player);
   const moveText = formatMove(m.move);
-  const captureText = m.move.pass ? 'Pass turn' : `Rect area ${(m.move.r2 - m.move.r1 + 1) * (m.move.c2 - m.move.c1 + 1)} cells`;
+  const captureText = activeRenderer().describeMove(m.move);
   const rss = m.player === 0 ? m.memoryFirstKb : m.memorySecondKb;
   return `
     <div class="turnDetailsInner">
@@ -1387,28 +1432,6 @@ function renderTurnDetail(g, turn) {
       <span>${escapeHtml(captureText)} · ${formatMs(m.elapsedMs)} · remaining F/S ${formatMs(m.remainingFirstMs)} / ${formatMs(m.remainingSecondMs)}</span>
       <span>Score ${m.scoreFirst}:${m.scoreSecond} · legal moves after turn ${m.legalAfter} · RSS ${formatKb(rss)}</span>
     </div>`;
-}
-
-function buildReplayState(game, turnCount) {
-  const originals = [];
-  const owners = new Array(170).fill(-1);
-  for (const row of game.boardRows || []) {
-    for (const ch of String(row)) originals.push(ch);
-  }
-  for (let i = 0; i < turnCount; i++) {
-    const move = game.moves[i];
-    if (!move || move.move.pass) continue;
-    for (let r = move.move.r1; r <= move.move.r2; r++) {
-      for (let c = move.move.c1; c <= move.move.c2; c++) {
-        owners[r * 17 + c] = move.player;
-      }
-    }
-  }
-  return { originals, owners };
-}
-
-function inRect(r, c, m) {
-  return r >= m.r1 && r <= m.r2 && c >= m.c1 && c <= m.c2;
 }
 
 function botNameForPlayer(game, player) {
@@ -1559,6 +1582,8 @@ function formatCompactMs(ms) {
 }
 
 function formatMove(m) {
+  const renderer = activeRenderer();
+  if (renderer && renderer.formatMove) return renderer.formatMove(m);
   if (!m || m.pass) return 'PASS';
   return `${m.r1} ${m.c1} ${m.r2} ${m.c2}`;
 }

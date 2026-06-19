@@ -5,7 +5,15 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { compileCpp, runFight, runTournament, summarizeGame, TOTAL_TIME_MS } = require('./src/gameEngine');
+const { compileCpp } = require('./src/core/runtime');
+const { runFight } = require('./src/core/runner/runFight');
+const { runTournament } = require('./src/core/runner/runTournament');
+const { summarizeGame } = require('./src/core/summarize');
+const { getJudge, listGames, DEFAULT_GAME_ID } = require('./src/games/registry');
+
+// Default clock used to seed form defaults / clamps. Per-job timing comes from the
+// selected game's judge.
+const TOTAL_TIME_MS = getJudge(DEFAULT_GAME_ID).timing.totalTimeMs;
 
 const app = express();
 const PORT = Number(process.env.PORT || 5001);
@@ -65,6 +73,7 @@ function nowIso() {
 function publicJob(job) {
   return {
     id: job.id,
+    gameId: job.gameId || DEFAULT_GAME_ID,
     createdAt: job.createdAt,
     updatedAt: job.updatedAt,
     status: job.status,
@@ -106,6 +115,7 @@ function makeJob() {
   const job = {
     id,
     dir,
+    gameId: DEFAULT_GAME_ID,
     createdAt: nowIso(),
     updatedAt: nowIso(),
     status: 'queued',
@@ -342,14 +352,24 @@ app.post('/api/start', upload.fields([{ name: 'botA', maxCount: 1 }, { name: 'bo
   const botAData = files.botAData?.[0] || null;
   const botBData = files.botBData?.[0] || null;
 
+  let judge;
+  try {
+    judge = getJudge(req.body.gameId);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+  const judgeTotalTimeMs = judge.timing.totalTimeMs;
+
   const datasetCount = clampInt(req.body.datasetCount, 30, 1, 1000);
-  const botATimeLimitMs = clampInt(req.body.botATimeLimitMs, TOTAL_TIME_MS, 1000, 600000);
-  const botBTimeLimitMs = clampInt(req.body.botBTimeLimitMs, TOTAL_TIME_MS, 1000, 600000);
+  const botATimeLimitMs = clampInt(req.body.botATimeLimitMs, judgeTotalTimeMs, 1000, 600000);
+  const botBTimeLimitMs = clampInt(req.body.botBTimeLimitMs, judgeTotalTimeMs, 1000, 600000);
   const playBothSides = req.body.playBothSides === 'true' || req.body.playBothSides === 'on' || req.body.playBothSides === true;
   const seedBase = String(req.body.seedBase || '').trim();
 
   const job = makeJob();
+  job.gameId = judge.id;
   job.settings = {
+    gameId: judge.id,
     datasetCount,
     botATimeLimitMs,
     botBTimeLimitMs,
@@ -392,6 +412,7 @@ app.post('/api/start', upload.fields([{ name: 'botA', maxCount: 1 }, { name: 'bo
       job.status = 'running';
       job.progress.current = 'Running games';
       const fight = await runFight({
+        judge,
         botAExe,
         botBExe,
         datasetCount,
@@ -428,6 +449,13 @@ app.post('/api/tournaments/start', tournamentUpload.any(), async (req, res) => {
     return res.status(400).json({ error: 'Upload at least 2 bot .cpp files.' });
   }
 
+  let judge;
+  try {
+    judge = getJudge(req.body.gameId);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+
   const mode = String(req.body.mode || 'round_robin');
   if (!['round_robin', 'swiss'].includes(mode)) {
     return res.status(400).json({ error: 'Tournament mode must be round_robin or swiss.' });
@@ -451,7 +479,9 @@ app.post('/api/tournaments/start', tournamentUpload.any(), async (req, res) => {
   const botTagsInput = Array.isArray(req.body.botTags) ? req.body.botTags : (req.body.botTags ? [req.body.botTags] : []);
 
   const job = makeJob();
+  job.gameId = judge.id;
   job.settings = {
+    gameId: judge.id,
     mode,
     botCount: files.length,
     botNames: files.map((file, idx) => String(botNamesInput[idx] || path.basename(file.originalname, path.extname(file.originalname)))),
@@ -527,6 +557,7 @@ app.post('/api/tournaments/start', tournamentUpload.any(), async (req, res) => {
       job.progress.phase = 'simulation';
 
       const result = await runTournament({
+        judge,
         mode,
         bots: readyBots,
         simulationCount,
@@ -594,6 +625,10 @@ app.post('/api/tournaments/start', tournamentUpload.any(), async (req, res) => {
   })();
 });
 
+app.get('/api/games', (_req, res) => {
+  res.json({ games: listGames(), defaultGameId: DEFAULT_GAME_ID });
+});
+
 app.get('/api/jobs/:id', (req, res) => {
   const job = jobs.get(req.params.id);
   if (!job) return res.status(404).json({ error: 'Job not found' });
@@ -626,7 +661,9 @@ app.get('/api/jobs/:id/games/:gameIndex/detail', (req, res) => {
   if (!Array.isArray(full.moves)) return res.status(404).json({ error: 'Game result still loading' });
   res.json({
     ...summarizeGame(full),
-    boardRows: full.boardRows,
+    gameId: job.gameId || DEFAULT_GAME_ID,
+    scenario: full.scenario || (full.boardRows ? { boardRows: full.boardRows } : null),
+    boardRows: full.boardRows || full.scenario?.boardRows,
     moves: full.moves,
     log: full.log,
     stderr: full.stderr,
