@@ -2,7 +2,8 @@
 const assert = require('assert');
 const path = require('path');
 const fs = require('fs');
-const { compileCpp, generateBoard, runSingleGame, runFight, summarizeGame, TOTAL_TIME_MS, READY_TIMEOUT_MS, PROCESS_TIME_LIMIT_MS } = require('../src/gameEngine');
+const { spawn } = require('child_process');
+const { compileCpp, classifyMatchScore, generateBoard, runSingleGame, runFight, runMatch, runTournament, summarizeGame, TOTAL_TIME_MS, READY_TIMEOUT_MS, PROCESS_TIME_LIMIT_MS } = require('../src/gameEngine');
 
 (async () => {
   const root = path.join(__dirname, '..');
@@ -17,9 +18,37 @@ const { compileCpp, generateBoard, runSingleGame, runFight, summarizeGame, TOTAL
     return last;
   }
 
+  let botCounter = 0;
+
+  async function compileBot(root, name, source, extraFiles = {}) {
+    botCounter++;
+    const dir = path.join(root, 'jobs', `test-bot-${botCounter}-${name}`);
+    fs.rmSync(dir, { recursive: true, force: true });
+    fs.mkdirSync(dir, { recursive: true });
+    const botDir = path.join(dir, 'bot');
+    fs.mkdirSync(botDir, { recursive: true });
+    const srcPath = path.join(dir, `${name}.cpp`);
+    const exePath = path.join(botDir, 'bot');
+    fs.writeFileSync(srcPath, source);
+    for (const [fileName, content] of Object.entries(extraFiles)) {
+      fs.writeFileSync(path.join(botDir, fileName), content);
+    }
+    await compileCpp(srcPath, exePath);
+    return { botId: `bot-${botCounter}`, name, exePath };
+  }
+
+  function pairKey(a, b) {
+    return [a, b].sort().join('::');
+  }
+
   assert.strictEqual(TOTAL_TIME_MS, 30000, 'protocol TIME budget should be 30,000ms');
   assert.strictEqual(READY_TIMEOUT_MS, 10000, 'READY timeout should match statement');
   assert.ok(PROCESS_TIME_LIMIT_MS > TOTAL_TIME_MS * 2, 'process lifetime limit should exceed the combined bot clocks');
+  assert.strictEqual(classifyMatchScore(2, 2), 'win');
+  assert.strictEqual(classifyMatchScore(1.5, 2), 'win');
+  assert.strictEqual(classifyMatchScore(1, 2), 'draw');
+  assert.strictEqual(classifyMatchScore(0.5, 2), 'loss');
+  assert.strictEqual(classifyMatchScore(0, 2), 'loss');
   const rows = generateBoard('test-seed');
 
   const dataDir = path.join(root, 'jobs', 'data-reader');
@@ -224,5 +253,259 @@ int main() {
   const seed0 = [...datasetSeeds.get(0)][0].split('#')[0];
   const seed1 = [...datasetSeeds.get(1)][0].split('#')[0];
   assert.notStrictEqual(seed0, seed1, 'random mode should use a different random seed per dataset');
+
+  const passBotSource = `
+#include <iostream>
+#include <string>
+int main() {
+  std::string line;
+  while (std::getline(std::cin, line)) {
+    if (line.rfind("READY", 0) == 0) std::cout << "OK" << std::endl;
+    else if (line.rfind("TIME", 0) == 0) std::cout << "-1 -1 -1 -1" << std::endl;
+    else if (line == "FINISH") return 0;
+  }
+  return 0;
+}
+`;
+
+  const passA = await compileBot(root, 'passA', passBotSource);
+  const passB = await compileBot(root, 'passB', passBotSource);
+  const passC = await compileBot(root, 'passC', passBotSource);
+  const passD = await compileBot(root, 'passD', passBotSource);
+  const passE = await compileBot(root, 'passE', passBotSource);
+  const passF = await compileBot(root, 'passF', passBotSource);
+
+  const matchResult = await runMatch({
+    simulationIndex: 0,
+    roundIndex: 0,
+    matchIndex: 0,
+    botA: passA,
+    botB: passB,
+    dataset: { datasetIndex: 0, datasetSeed: 'match-seed', boardRows: rows },
+    playBothSides: true,
+    botTimeLimitMs: 10000,
+    gameIndexStart: 0
+  });
+  assert.strictEqual(matchResult.match.scoreA, 1, 'role-swap pass-vs-pass match should draw');
+  assert.strictEqual(matchResult.match.classificationA, 'draw', 'score 1 match should classify as draw');
+  assert.strictEqual(matchResult.games.length, 2, 'role-swap match should create two games');
+
+  const rr = await runTournament({
+    mode: 'round_robin',
+    bots: [passA, passB, passC],
+    simulationCount: 1,
+    seedBase: 'rr-seed',
+    playBothSides: true,
+    botTimeLimitMs: 10000,
+    maxConcurrentGames: 2
+  });
+  assert.strictEqual(rr.matches.length, 3, '3 bots round-robin should produce 3 matches per simulation');
+  assert.strictEqual(rr.games.length, 6, 'role-swap round-robin should produce 2 games per match');
+
+  // Multi-simulation aggregate analytics (Monte Carlo stats).
+  const multiSim = await runTournament({
+    mode: 'round_robin',
+    bots: [passA, passB, passC],
+    simulationCount: 3,
+    seedBase: 'multi-seed',
+    playBothSides: true,
+    botTimeLimitMs: 10000,
+    maxConcurrentGames: 2
+  });
+  assert.strictEqual(multiSim.simulations.length, 3, 'multi-sim should run 3 simulations');
+  assert.strictEqual(multiSim.matches.length, 9, '3 simulations × 3 matches = 9 matches');
+  for (const row of multiSim.analytics) {
+    assert.ok(Number.isFinite(row.winRateStdDev), 'winRateStdDev should be a finite number');
+    assert.ok(Number.isFinite(row.eloStdDev), 'eloStdDev should be a finite number');
+    assert.ok(row.avgFinalRank >= 1 && row.avgFinalRank <= 3, 'avgFinalRank should fall within the rank range');
+    assert.ok(row.top3RatePct >= 0 && row.top3RatePct <= 1, 'top3RatePct should be a ratio between 0 and 1');
+    assert.strictEqual(row.matchWinPct + row.matchDrawPct + row.matchLossPct > 0.999, true, 'match rate components should sum to ~1');
+  }
+
+  const swiss = await runTournament({
+    mode: 'swiss',
+    bots: [passA, passB, passC, passD, passE, passF],
+    simulationCount: 1,
+    swissRounds: 3,
+    seedBase: 'swiss-seed',
+    playBothSides: true,
+    botTimeLimitMs: 10000,
+    avoidRepeatOpponents: true
+  });
+  assert.strictEqual(swiss.simulations.length, 1, 'swiss should return one simulation');
+  for (const row of swiss.analytics) {
+    assert.strictEqual(row.matchesPlayed, 3, '6-bot 3-round swiss should give each bot 3 matches');
+  }
+  const swissPairs = new Set();
+  for (const match of swiss.matches) {
+    const key = pairKey(match.botAId, match.botBId);
+    assert.ok(!swissPairs.has(key), 'swiss should avoid repeated opponents when possible');
+    swissPairs.add(key);
+  }
+
+  for (const row of swiss.analytics) {
+    for (const [oppId, cell] of Object.entries(row.opponents)) {
+      const reverse = swiss.analytics.find(x => x.botId === oppId).opponents[row.botId];
+      assert.strictEqual(cell.matches, reverse.matches, 'opponent summaries should mirror by match count');
+    }
+  }
+  for (const match of swiss.matches) {
+    const ab = swiss.pairMatrix[match.botAId][match.botBId];
+    const ba = swiss.pairMatrix[match.botBId][match.botAId];
+    assert.strictEqual(ab.matches, ba.matches, 'pair matrix should be symmetric by sample count');
+  }
+
+  const swissElo = await runTournament({
+    mode: 'swiss',
+    bots: [passA, passB, passC, passD],
+    simulationCount: 1,
+    swissRounds: 2,
+    seedBase: 'swiss-elo-seed',
+    playBothSides: true,
+    botTimeLimitMs: 10000,
+    pairingMethod: 'score_then_elo',
+    avoidRepeatOpponents: true
+  });
+  assert.strictEqual(swissElo.simulations.length, 1, 'score_then_elo swiss should run');
+
+  const swissRandom = await runTournament({
+    mode: 'swiss',
+    bots: [passA, passB, passC, passD],
+    simulationCount: 1,
+    swissRounds: 2,
+    seedBase: 'swiss-random-seed',
+    playBothSides: true,
+    botTimeLimitMs: 10000,
+    pairingMethod: 'random_swiss',
+    avoidRepeatOpponents: true
+  });
+  assert.strictEqual(swissRandom.simulations.length, 1, 'random_swiss should run');
+
+  const timeoutTournament = await runTournament({
+    mode: 'round_robin',
+    bots: [
+      { botId: 'timeoutBot', name: 'timeoutBot', exePath: timeoutExeA },
+      passA
+    ],
+    simulationCount: 1,
+    seedBase: 'timeout-tournament',
+    playBothSides: false,
+    botTimeLimitMs: 100,
+    readyTimeoutMs: 1000
+  });
+  const timeoutBotStats = timeoutTournament.analytics.find(x => x.botId === 'timeoutBot');
+  assert.ok(timeoutBotStats.nonOkCount > 0, 'non-ok games should count into tournament analytics');
+  assert.ok(timeoutBotStats.matchLosses >= 1, 'timed out bot should lose match analytics');
+
+  const port = 5617;
+  const serverProc = spawn(process.execPath, ['server.js'], {
+    cwd: root,
+    env: { ...process.env, PORT: String(port) },
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+  await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('server start timeout')), 10000);
+    serverProc.stdout.on('data', chunk => {
+      if (String(chunk).includes(`http://localhost:${port}`)) {
+        clearTimeout(timer);
+        resolve();
+      }
+    });
+    serverProc.on('exit', code => reject(new Error(`server exited early ${code}`)));
+  });
+
+  try {
+    const form = new FormData();
+    const uiBot1 = fs.readFileSync(path.join(root, 'sample-bots', 'sample_first_legal.cpp'));
+    const uiBot2 = fs.readFileSync(path.join(root, 'sample-bots', 'sample_first_legal.cpp'));
+    form.append('mode', 'round_robin');
+    form.append('simulationCount', '1');
+    form.append('playBothSides', 'true');
+    form.append('botTimeLimitMs', '10000');
+    form.append('bots', new Blob([uiBot1]), 'ui-a.cpp');
+    form.append('bots', new Blob([uiBot2]), 'ui-b.cpp');
+    form.append('botNames', 'UI A');
+    form.append('botNames', 'UI B');
+    form.append('botTags', '');
+    form.append('botTags', '');
+    const startRes = await fetch(`http://localhost:${port}/api/tournaments/start`, { method: 'POST', body: form });
+    const startJson = await startRes.json();
+    assert.ok(startRes.ok, 'tournament start endpoint should succeed');
+    assert.ok(startJson.jobId, 'tournament start should return jobId');
+
+    let job;
+    for (let i = 0; i < 80; i++) {
+      const jobRes = await fetch(`http://localhost:${port}/api/jobs/${startJson.jobId}`);
+      job = await jobRes.json();
+      if (job.status === 'done') break;
+      if (job.status === 'error') throw new Error(job.error || 'job failed');
+      await new Promise(resolve => setTimeout(resolve, 250));
+    }
+
+    assert.strictEqual(job.status, 'done', 'tournament job should finish through HTTP API');
+    assert.ok(job.summary.analytics.totalMatches >= 1, 'poll payload should include tournament analytics');
+    assert.ok((job.games || []).length >= 1, 'poll payload should include flat game summaries');
+    assert.ok(typeof job.progress.phase === 'string', 'poll payload should expose progress phase');
+
+    const detailRes = await fetch(`http://localhost:${port}/api/jobs/${startJson.jobId}/games/0/detail`);
+    const detail = await detailRes.json();
+    assert.ok(detailRes.ok, 'existing game detail endpoint should still work for tournament games');
+    assert.ok(Array.isArray(detail.moves), 'game detail should expose move list');
+
+    const simDetailRes = await fetch(`http://localhost:${port}/api/jobs/${startJson.jobId}/simulations/0`);
+    const simDetail = await simDetailRes.json();
+    assert.ok(simDetailRes.ok, 'simulation detail endpoint should succeed');
+    assert.ok(Array.isArray(simDetail.matches), 'simulation detail endpoint should include full match list');
+
+    const matchExplorerRes = await fetch(`http://localhost:${port}/api/jobs/${startJson.jobId}/matches?simulationIndex=0&page=1&pageSize=20&sortKey=simulationIndex&sortDir=desc`);
+    const matchExplorer = await matchExplorerRes.json();
+    assert.ok(matchExplorerRes.ok, 'match explorer endpoint should succeed');
+    assert.ok(Array.isArray(matchExplorer.items), 'match explorer should return paged items');
+
+    const firstMatch = matchExplorer.items[0];
+    const pairRes = await fetch(`http://localhost:${port}/api/jobs/${startJson.jobId}/pairs/${encodeURIComponent(firstMatch.botAId)}/${encodeURIComponent(firstMatch.botBId)}`);
+    const pairJson = await pairRes.json();
+    assert.ok(pairRes.ok, 'pair history endpoint should succeed');
+    assert.ok(Array.isArray(pairJson.matches), 'pair history should include matches array');
+
+    const exportRes = await fetch(`http://localhost:${port}/api/jobs/${startJson.jobId}/export.json`);
+    const exported = await exportRes.json();
+    assert.ok(exportRes.ok, 'export endpoint should succeed for tournament jobs');
+    assert.ok(exported.analytics, 'export should include analytics');
+    assert.ok(Array.isArray(exported.simulations), 'export should include simulations');
+    assert.ok(Array.isArray(exported.simulations[0]?.roundSummaries), 'export simulations should include round snapshots');
+    assert.ok(Array.isArray(exported.matches), 'export should include matches');
+    assert.ok(Array.isArray(exported.games), 'export should include games');
+
+    const dataTournamentForm = new FormData();
+    const dataReaderSource = fs.readFileSync(dataSrc);
+    dataTournamentForm.append('mode', 'round_robin');
+    dataTournamentForm.append('simulationCount', '1');
+    dataTournamentForm.append('playBothSides', 'false');
+    dataTournamentForm.append('botTimeLimitMs', '10000');
+    dataTournamentForm.append('bots', new Blob([dataReaderSource]), 'data-a.cpp');
+    dataTournamentForm.append('bots', new Blob([dataReaderSource]), 'data-b.cpp');
+    dataTournamentForm.append('botNames', 'Data A');
+    dataTournamentForm.append('botNames', 'Data B');
+    dataTournamentForm.append('botTags', '');
+    dataTournamentForm.append('botTags', '');
+    dataTournamentForm.append('botData_0', new Blob(['ok']), 'data.bin');
+    dataTournamentForm.append('botData_1', new Blob(['ok']), 'data.bin');
+    const dataStartRes = await fetch(`http://localhost:${port}/api/tournaments/start`, { method: 'POST', body: dataTournamentForm });
+    const dataStartJson = await dataStartRes.json();
+    assert.ok(dataStartRes.ok, 'tournament endpoint should accept per-bot data.bin');
+    let dataJob;
+    for (let i = 0; i < 80; i++) {
+      const jobRes = await fetch(`http://localhost:${port}/api/jobs/${dataStartJson.jobId}`);
+      dataJob = await jobRes.json();
+      if (dataJob.status === 'done') break;
+      if (dataJob.status === 'error') throw new Error(dataJob.error || 'data job failed');
+      await new Promise(resolve => setTimeout(resolve, 250));
+    }
+    assert.strictEqual(dataJob.status, 'done', 'tournament data.bin job should finish');
+  } finally {
+    serverProc.kill('SIGTERM');
+  }
+
   console.log(dataRes.log);
 })();

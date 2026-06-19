@@ -29,6 +29,7 @@ body {
     radial-gradient(circle at 88% 10%, rgba(145,179,157,.12), transparent 28%),
     linear-gradient(180deg, var(--bg2), var(--bg) 58%);
   color: var(--text);
+  line-height: 1.6;
 }
 a { color: var(--accent); }
 .shell { width: min(1240px, calc(100% - 32px)); margin: 32px auto 56px; }
@@ -59,7 +60,23 @@ h2 { margin: 0 0 7px; letter-spacing: -0.025em; }
 .botBBox .fileLabel { background: rgba(145,179,157,.12); color: var(--botB); }
 .fileBox strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 17px; }
 .fileBox small, .field small, .toggleCard small, summary small { color: var(--muted); font-weight: 500; }
+.modeRow { display: grid; grid-template-columns: minmax(220px, 320px); margin-bottom: 16px; }
+.modeRow select,
+select {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 13px;
+  background: rgba(23,35,60,.92);
+  color: var(--text);
+  outline: none;
+}
+.modeRow select:focus,
+select:focus { border-color: rgba(224,177,95,.7); box-shadow: 0 0 0 3px rgba(224,177,95,.12); }
 .optionsGrid { display: grid; grid-template-columns: 170px 1fr minmax(300px, .9fr); gap: 16px; align-items: stretch; margin-top: 16px; }
+.tournamentUploadGrid { grid-template-columns: 1fr; }
+.tournamentFileBox { min-height: 110px; }
+.tournamentOptionsGrid { grid-template-columns: repeat(3, minmax(0,1fr)); }
 .field { display: grid; gap: 8px; color: var(--soft); font-weight: 750; }
 input[type=text], input[type=number] { width: 100%; border: 1px solid var(--border); border-radius: 14px; padding: 12px 13px; background: rgba(23,35,60,.92); color: var(--text); outline: none; }
 input[type=text]:focus, input[type=number]:focus { border-color: rgba(224,177,95,.7); box-shadow: 0 0 0 3px rgba(224,177,95,.12); }
@@ -79,6 +96,14 @@ button:disabled { opacity: .55; cursor: wait; box-shadow: none; }
 .metric b { font-size: clamp(24px, 3vw, 32px); display: block; margin-top: 9px; letter-spacing: -0.035em; }
 .metric small { display: block; color: var(--muted); margin-top: 4px; }
 .standingsGrid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; }
+.tableScroll { overflow: auto; border: 1px solid var(--border); border-radius: 18px; background: rgba(5,9,18,.55); }
+.standingsTable { width: 100%; border-collapse: collapse; min-width: 1200px; font-size: 12px; }
+.standingsTable th, .standingsTable td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,.075); text-align: left; white-space: nowrap; }
+.standingsTable th { position: sticky; top: 0; background: #101722; color: var(--soft); font-size: 11px; text-transform: uppercase; letter-spacing: .09em; }
+.tableSortBtn { border: 0; background: transparent; color: inherit; padding: 0; min-height: 0; box-shadow: none; font: inherit; letter-spacing: inherit; text-transform: inherit; }
+.tableSortBtn.active { color: var(--accent); }
+.badgeRow { display: flex; gap: 6px; flex-wrap: wrap; }
+.miniBadge { border: 1px solid var(--border); border-radius: 999px; padding: 3px 7px; color: var(--accent); font-size: 11px; }
 .standingCard { border: 1px solid var(--border); background: rgba(255,255,255,.05); border-radius: 20px; padding: 16px; }
 .standingTop { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .standingName { display: flex; align-items: center; gap: 10px; font-weight: 900; }
@@ -90,6 +115,39 @@ button:disabled { opacity: .55; cursor: wait; box-shadow: none; }
 .record small { display: block; color: var(--muted); }
 .record b { font-size: 22px; }
 .datasetGroups { display: grid; gap: 16px; }
+.tournamentPanelGrid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; margin-top: 12px; }
+.tournamentPanel, .matrixPanel { border: 1px solid var(--border); border-radius: 20px; background: rgba(255,255,255,.035); padding: 14px; }
+.detailPanel { margin-top: 14px; }
+.matchControls { display: grid; grid-template-columns: minmax(0,1fr) 180px 120px; gap: 10px; margin-bottom: 10px; }
+.matchControls input, .matchControls select { width: 100%; }
+.simulationList, .matchList { display: grid; gap: 10px; max-height: 520px; overflow: auto; }
+.simulationDetail { display: grid; gap: 12px; }
+.detailCard { border: 1px solid var(--border); border-radius: 16px; padding: 12px; background: rgba(8,12,22,.42); }
+.detailCard h4, .detailCard h5 { margin: 0 0 6px; }
+.detailMeta { display: flex; gap: 8px; flex-wrap: wrap; color: var(--muted); font-size: 12px; }
+.detailMeta strong { color: var(--text); }
+.filterChip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); border-radius: 999px; padding: 5px 9px; background: rgba(255,255,255,.04); color: var(--soft); }
+.filterChip button { min-height: 0; padding: 0; background: transparent; color: var(--accent); box-shadow: none; border-radius: 0; }
+.rosterNameInput, .rosterTagInput { width: 100%; }
+.rosterDataInput { width: 100%; color: var(--muted); }
+.detailList { display: grid; gap: 8px; }
+.detailRow { border: 1px solid rgba(255,255,255,.06); border-radius: 12px; padding: 10px; background: rgba(255,255,255,.03); }
+.simulationItem, .matchItem { border: 1px solid var(--border); border-radius: 16px; padding: 12px; background: rgba(8,12,22,.58); }
+.simulationItem { width: 100%; text-align: left; color: var(--text); min-height: 0; box-shadow: none; }
+.simulationItem.active { border-color: rgba(224,177,95,.72); background: rgba(224,177,95,.11); }
+.simulationItem h4, .matchItem h4 { margin: 0 0 6px; font-size: 14px; }
+.simulationMeta, .matchMeta { display: flex; gap: 8px; flex-wrap: wrap; color: var(--muted); font-size: 12px; }
+.pairMatrix { overflow: auto; }
+.pairMatrixTable { width: 100%; border-collapse: collapse; min-width: 760px; }
+.pairMatrixTable th, .pairMatrixTable td { border: 1px solid rgba(255,255,255,.075); padding: 8px; vertical-align: top; }
+.pairMatrixTable th { background: rgba(255,255,255,.05); text-align: left; }
+.matrixCell { width: 100%; min-width: 110px; border-radius: 12px; padding: 8px; font-size: 12px; border: 1px solid transparent; color: var(--text); text-align: left; min-height: 0; box-shadow: none; }
+.matrixCell small { color: var(--muted); display: block; margin-top: 2px; }
+.matrixCell.good { background: rgba(134,239,172,.08); }
+.matrixCell.bad { background: rgba(252,165,165,.08); }
+.matrixCell.draw { background: rgba(253,230,138,.08); }
+.matrixCell.neutral { background: rgba(255,255,255,.04); }
+.matrixCell.active { border-color: rgba(224,177,95,.72); box-shadow: inset 0 0 0 1px rgba(224,177,95,.42); }
 .datasetCard { border: 1px solid var(--border); background: rgba(255,255,255,.045); border-radius: 22px; overflow: hidden; }
 .datasetHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 15px 16px; background: rgba(255,255,255,.045); border-bottom: 1px solid var(--border); }
 .datasetTitle { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -158,6 +216,8 @@ pre { max-height: 340px; overflow: auto; background: #050914; border: 1px solid 
 @media (max-width: 980px) {
   .hero { grid-template-columns: 1fr; align-items: stretch; }
   .optionsGrid { grid-template-columns: 1fr 1fr; }
+  .tournamentOptionsGrid, .tournamentPanelGrid { grid-template-columns: 1fr; }
+  .matchControls { grid-template-columns: 1fr; }
   .toggleCard { grid-column: 1 / -1; }
   .summary, .diagnosticsGrid, .inspectorMeta { grid-template-columns: repeat(2, minmax(0,1fr)); }
   .datasetBody { grid-template-columns: 1fr; }
@@ -167,11 +227,196 @@ pre { max-height: 340px; overflow: auto; background: #050914; border: 1px solid 
 @media (max-width: 720px) {
   .shell { width: min(100% - 20px, 1240px); margin-top: 18px; }
   .card { padding: 16px; border-radius: 20px; }
-  .heroPanel, .botUploadGrid, .optionsGrid, .summary, .diagnosticsGrid, .standingsGrid, .record, .inspectorMeta, .replayControls { grid-template-columns: 1fr; }
+  .heroPanel, .botUploadGrid, .optionsGrid, .tournamentOptionsGrid, .summary, .diagnosticsGrid, .standingsGrid, .record, .inspectorMeta, .replayControls, .modeRow { grid-template-columns: 1fr; }
   .sectionTitle, .datasetHeader, .startRow { flex-direction: column; align-items: stretch; }
   .seed { max-width: 100%; }
   .boardGrid { grid-template-columns: repeat(17, minmax(18px, 1fr)); gap: 2px; padding: 7px; }
   .boardCell { min-width: 18px; border-radius: 5px; font-size: 10px; }
+}
+
+/* ============================================================
+   Accessibility — focus rings
+   ============================================================ */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Keyboard users get the outline; pointer users keep the shadow */
+input[type=text]:focus-visible,
+input[type=number]:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+/* ============================================================
+   H1 gradient text
+   ============================================================ */
+h1 {
+  background: linear-gradient(125deg, var(--text) 15%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ============================================================
+   Button enhancements
+   ============================================================ */
+button:not(:disabled):not(.turnButton):not(.turnJump):not(.logBtn):not(.matrixCell):not(.simulationItem):not(.gameListItem):not(.tableSortBtn):hover,
+.linkBtn:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+  box-shadow: 0 17px 38px rgba(224,177,95,.26);
+  transition: filter .15s ease-out, transform .15s ease-out, box-shadow .15s ease-out;
+}
+
+button.loading {
+  position: relative;
+  overflow: hidden;
+}
+
+button.loading::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(255,255,255,.22) 50%,
+    transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s ease-in-out infinite;
+}
+
+/* ============================================================
+   Progress bar shimmer
+   ============================================================ */
+#progressBar {
+  position: relative;
+  overflow: hidden;
+}
+
+.progress.running #progressBar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(255,255,255,.28) 50%,
+    transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+/* ============================================================
+   File box selected state
+   ============================================================ */
+.botABox.selected {
+  border-color: rgba(224,177,95,.75);
+  background: rgba(224,177,95,.09);
+}
+
+.botBBox.selected {
+  border-color: rgba(145,179,157,.72);
+  background: rgba(145,179,157,.09);
+}
+
+/* ============================================================
+   Touch targets — fix min-height: 0 elements
+   ============================================================ */
+.turnButton       { min-height: 40px; }
+.logBtn           { min-height: 32px; padding: 7px 12px; }
+.filterChip button { min-height: 28px; min-width: 28px; padding: 4px 8px; cursor: pointer; }
+.tableSortBtn     { min-height: 30px; padding: 3px 7px; border-radius: 8px;
+                    cursor: pointer; transition: background .14s ease-out; }
+.tableSortBtn:hover { background: rgba(255,255,255,.07); }
+
+/* ============================================================
+   Card reveal animation
+   ============================================================ */
+@keyframes cardReveal {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.card:not(.hidden) { animation: cardReveal .28s ease-out; }
+
+/* ============================================================
+   Tabular numerals for data displays
+   ============================================================ */
+.metric b, .heroStat b, .scoreBox .score, .record b {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================
+   Empty state polish
+   ============================================================ */
+.emptyState { font-size: 14px; line-height: 1.65; }
+
+/* ============================================================
+   Tournament win/draw/loss analytics chart
+   ============================================================ */
+#tournamentAnalyticsChart {
+  margin-top: 16px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: rgba(255,255,255,.035);
+  padding: 16px;
+}
+.wdlLegend { margin-bottom: 14px; }
+.dot.stabilityDot { background: var(--accent); }
+.wdlChart { display: grid; gap: 10px; }
+.wdlRow {
+  display: grid;
+  grid-template-columns: minmax(120px, 200px) 1fr minmax(90px, 130px);
+  gap: 12px;
+  align-items: center;
+}
+.wdlName { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.wdlRank { color: var(--muted); font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.wdlBot { font-weight: 750; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wdlBar {
+  display: flex;
+  height: 26px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(255,255,255,.05);
+  border: 1px solid var(--border);
+}
+.wdlSeg {
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: #06100a;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.wdlSeg.win  { background: var(--good); }
+.wdlSeg.draw { background: var(--draw); }
+.wdlSeg.loss { background: var(--bad); }
+.wdlStability { display: flex; align-items: center; gap: 8px; }
+.wdlStability small { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.wdlStabilityTrack {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.08);
+  overflow: hidden;
+}
+.wdlStabilityFill { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+
+@media (max-width: 720px) {
+  .wdlRow { grid-template-columns: 1fr; gap: 6px; }
+  .wdlStability { order: 3; }
 }
 
 @media (prefers-reduced-motion: reduce) {

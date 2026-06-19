@@ -32,6 +32,18 @@
           <span class="pill neutral">Local runner</span>
         </div>
 
+        <div class="modeRow">
+          <label class="field">
+            <span>Mode</span>
+            <select id="modeSelect" name="mode">
+              <option value="duel">Duel 2 Bots</option>
+              <option value="round_robin">Round Robin</option>
+              <option value="swiss">Swiss</option>
+            </select>
+          </label>
+        </div>
+
+        <div id="duelFields">
         <div class="botUploadGrid">
           <label class="fileBox botABox">
             <span class="fileLabel">Bot A</span>
@@ -88,6 +100,92 @@
             </span>
           </label>
         </div>
+        </div>
+
+        <div id="tournamentFields" class="hidden">
+          <div class="botUploadGrid tournamentUploadGrid">
+            <label class="fileBox botABox tournamentFileBox">
+              <span class="fileLabel">Bots[]</span>
+              <strong id="tournamentBotsName">Chưa chọn bot</strong>
+              <small>Upload nhiều file .cpp cùng lúc</small>
+              <input id="tournamentBotsInput" type="file" name="bots" accept=".cpp" multiple />
+            </label>
+          </div>
+          <div id="tournamentRosterWrap" class="hidden">
+            <div class="panelLabel">Bot roster</div>
+            <div class="tableScroll">
+              <table class="standingsTable" id="tournamentRosterTable"></table>
+            </div>
+          </div>
+
+          <div class="optionsGrid tournamentOptionsGrid">
+            <label class="field">
+              <span>Simulation count</span>
+              <input id="simulationCount" name="simulationCount" type="number" min="1" max="500" value="20" />
+              <small>Số tournament simulation</small>
+            </label>
+            <label class="field swissOnlyField hidden" id="swissRoundsField">
+              <span>Swiss rounds</span>
+              <input id="swissRounds" name="swissRounds" type="number" min="1" max="100" value="20" />
+              <small>Số round mỗi simulation</small>
+            </label>
+            <label class="field">
+              <span>Bot time limit (ms)</span>
+              <input id="tournamentBotTimeLimitMs" name="botTimeLimitMs" type="number" min="1000" max="600000" value="10000" />
+              <small>Clock chung cho mọi bot</small>
+            </label>
+            <label class="field">
+              <span>Seed base</span>
+              <input id="tournamentSeedBase" name="seedBase" type="text" placeholder="vd: swiss-run-01" />
+              <small>Deterministic nếu giữ nguyên seed</small>
+            </label>
+            <label class="field swissOnlyField hidden" id="pairingMethodField">
+              <span>Pairing method</span>
+              <select id="pairingMethod" name="pairingMethod">
+                <option value="score_then_random">score_then_random</option>
+                <option value="score_then_elo">score_then_elo</option>
+                <option value="random_swiss">random_swiss</option>
+              </select>
+              <small>v1 dùng score + seeded tiebreak</small>
+            </label>
+            <label class="field swissOnlyField hidden" id="initialEloField">
+              <span>Initial Elo</span>
+              <input id="initialElo" name="initialElo" type="number" min="1" max="5000" value="1500" />
+              <small>Điểm Elo khởi tạo</small>
+            </label>
+            <label class="field swissOnlyField hidden" id="eloKFactorField">
+              <span>Elo K-factor</span>
+              <input id="eloKFactor" name="eloKFactor" type="number" min="1" max="256" value="24" />
+              <small>Độ nhạy Elo</small>
+            </label>
+            <label class="field">
+              <span>Max parallel games</span>
+              <input id="maxConcurrentGames" name="maxConcurrentGames" type="number" min="1" max="64" value="1" />
+              <small>v1 thực thi tuần tự để an toàn máy local</small>
+            </label>
+            <label class="toggleCard">
+              <input id="tournamentPlayBothSides" name="tournamentPlayBothSides" type="checkbox" checked />
+              <span>
+                <b>Play both sides</b>
+                <small>Mỗi match chạy role-swap trên cùng dataset nếu bật.</small>
+              </span>
+            </label>
+            <label class="toggleCard swissOnlyField hidden" id="avoidRepeatField">
+              <input id="avoidRepeatOpponents" name="avoidRepeatOpponents" type="checkbox" checked />
+              <span>
+                <b>Avoid repeat opponents</b>
+                <small>Swiss sẽ tránh gặp lại cùng bot nếu có thể.</small>
+              </span>
+            </label>
+            <label class="toggleCard">
+              <input id="stopOnCompileError" name="stopOnCompileError" type="checkbox" checked />
+              <span>
+                <b>Stop on compile error</b>
+                <small>Dừng luôn nếu có bot compile fail.</small>
+              </span>
+            </label>
+          </div>
+        </div>
         
         <div class="startRow">
           <button id="startBtn" type="submit">Start Fight</button>
@@ -100,11 +198,11 @@
       <div class="sectionTitle">
         <div>
           <h2>Tiến độ</h2>
-          <p id="statusText" class="muted">Đang chờ...</p>
+          <p id="statusText" class="muted" aria-live="polite" aria-atomic="true">Đang chờ...</p>
         </div>
         <a id="exportLink" class="linkBtn hidden" href="#">Export JSON</a>
       </div>
-      <div class="progress"><div id="progressBar"></div></div>
+      <div class="progress"><div id="progressBar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div></div>
       <div id="summary" class="summary"></div>
       <div id="diagnostics" class="diagnosticsGrid"></div>
     </section>
@@ -117,6 +215,12 @@
         </div>
       </div>
       <div id="standings" class="standingsGrid"></div>
+      <div id="tournamentAnalyticsChart" class="hidden"></div>
+      <div id="tournamentStandingsWrap" class="hidden">
+        <div class="tableScroll">
+          <table id="tournamentStandingsTable" class="standingsTable"></table>
+        </div>
+      </div>
     </section>
 
     <section id="gamesCard" class="card hidden">
@@ -132,6 +236,46 @@
         </div>
       </div>
       <div id="datasetGroups" class="datasetGroups"></div>
+      <div id="tournamentViews" class="hidden">
+        <div class="tournamentPanelGrid">
+          <div class="tournamentPanel">
+            <div class="panelLabel">Simulation explorer</div>
+            <div id="simulationList" class="simulationList"></div>
+          </div>
+          <div class="tournamentPanel">
+            <div class="panelLabel">Match explorer</div>
+            <div id="activeFilters" class="detailMeta"></div>
+            <div class="matchControls">
+              <input id="matchSearchInput" type="text" placeholder="Search bot name or seed" />
+              <select id="matchSortKey">
+                <option value="simulationIndex">Simulation</option>
+                <option value="roundIndex">Round</option>
+                <option value="scoreA">Score A</option>
+                <option value="cellsDiffA">Cells diff</option>
+                <option value="nonOkCount">Non-ok</option>
+              </select>
+              <select id="matchSortDir">
+                <option value="desc">Desc</option>
+                <option value="asc">Asc</option>
+              </select>
+            </div>
+            <div id="matchList" class="matchList"></div>
+            <div id="matchPager" class="detailMeta"></div>
+          </div>
+        </div>
+        <div class="tournamentPanel detailPanel">
+          <div class="panelLabel">Simulation detail</div>
+          <div id="simulationDetail" class="simulationDetail"></div>
+        </div>
+        <div class="tournamentPanel matrixPanel">
+          <div class="panelLabel">Pair matrix</div>
+          <div id="pairMatrix" class="pairMatrix"></div>
+        </div>
+        <div class="tournamentPanel detailPanel">
+          <div class="panelLabel">Head-to-head detail</div>
+          <div id="pairDetail" class="simulationDetail"></div>
+        </div>
+      </div>
     </section>
 
     <section id="inspectorCard" class="card hidden">

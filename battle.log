@@ -1,0 +1,245 @@
+Compile, start game, move, finish
+[10:39:15 AM] START Dataset 1 · Game 1 · A FIRST / B SECOND
+[10:39:16 AM] MOVE g=1 FIRST 0 13 1 14 · 59ms · score 4:0 · mem F 394.6 MiB / S 204.1 MiB
+[10:39:16 AM] MOVE g=1 SECOND 3 14 6 14 · 89ms · score 4:4 · mem F 394.9 MiB / S 394.6 MiB
+[10:39:16 AM] MOVE g=1 FIRST 6 13 6 16 · 43ms · score 8:3 · mem F 394.9 MiB / S 394.8 MiB
+[10:39:16 AM] MOVE g=1 SECOND 1 3 3 3 · 58ms · score 8:6 · mem F 394.9 MiB / S 394.8 MiB
+[10:39:16 AM] MOVE g=1 FIRST 3 16 4 16 · 76ms · score 10:6 · mem F 394.9 MiB / S 394.9 MiB
+[10:39:16 AM] MOVE g=1 SECOND 8 4 8 6 · 52ms · score 10:9 · mem F 394.9 MiB / S 394.9 MiB
+[10:39:16 AM] MOVE g=1 FIRST 6 5 7 5 · 54ms · score 12:9 · mem F 395.0 MiB / S 394.9 MiB
+[10:39:16 AM] MOVE g=1 SECOND 3 8 6 8 · 36ms · score 12:13 · mem F 395.0 MiB / S 394.9 MiB
+[10:39:16 AM] MOVE g=1 FIRST 7 4 9 5 · 34ms · score 17:11 · mem F 395.0 MiB / S 394.9 MiB
+[10:39:16 AM] MOVE g=1 SECOND 9 3 9 6 · 32ms · score 15:15 · mem F 395.1 MiB / S 394.9 MiB
+[10:39:16 AM] MOVE g=1 FIRST 2 7 3 8 · 200ms · score 19:14 · mem F 395.1 MiB / S 395.0 MiB
+[10:39:16 AM] MOVE g=1 SECOND 0 5 0 7 · 27ms · score 19:17 · mem F 395.1 MiB / S 395.0 MiB
+[10:39:16 AM] MOVE g=1 FIRST 4 13 4 15 · 19ms · score 22:16 · mem F 395.1 MiB / S 395.0 MiB
+[10:39:16 AM] MOVE g=1 SECOND 3 9 4 9 · 27ms · score 22:18 · mem F 395.2 MiB / S 395.1 MiB
+[10:39:16 AM] MOVE g=1 FIRST 7 0 8 0 · 23ms · score 24:18 · mem F 395.2 MiB / S 395.1 MiB
+[10:39:16 AM] MOVE g=1 SECOND 9 11 9 12 · 110ms · score 24:20 · mem F 395.2 MiB / S 395.2 MiB
+[10:39:17 AM] MOVE g=1 FIRST 5 4 5 5 · 80ms · score 26:20 · mem F 395.2 MiB / S 395.2 MiB
+[10:39:17 AM] MOVE g=1 SECOND 0 10 1 10 · 69ms · score 26:22 · mem F 395.3 MiB / S 395.2 MiB
+[10:39:17 AM] MOVE g=1 FIRST 1 1 1 2 · 67ms · score 28:22 · mem F 395.3 MiB / S 395.3 MiB
+[10:39:17 AM] MOVE g=1 SECOND 1 4 1 5 · 47ms · score 28:24 · mem F 395.3 MiB / S 395.3 MiB
+[10:39:17 AM] MOVE g=1 FIRST 3 5 4 5 · 163ms · score 30:24 · mem F 395.3 MiB / S 395.3 MiB
+[10:39:17 AM] MOVE g=1 SECOND 2 12 3 12 · 82ms · score 30:26 · mem F 395.4 MiB / S 395.3 MiB
+[10:39:17 AM] MOVE g=1 FIRST PASS · 71ms · score 30:26 · mem F 395.4 MiB / S 395.4 MiB
+[10:39:17 AM] MOVE g=1 SECOND 0 12 1 12 · 27ms · score 30:28 · mem F 395.5 MiB / S 395.4 MiB
+[10:39:17 AM] MOVE g=1 FIRST 1 11 1 16 · 154ms · score 34:27 · mem F 395.5 MiB / S 395.4 MiB
+[10:39:22 AM] MOVE g=1 SECOND 3 11 4 11 · 5.00s · score 34:29 · mem F 395.5 MiB / S 395.9 MiB
+[10:39:22 AM] MOVE g=1 FIRST 0 11 2 11 · 232ms · score 36:29 · mem F 395.6 MiB / S 395.9 MiB
+[10:39:22 AM] MOVE g=1 SECOND 1 9 2 9 · 11ms · score 36:31 · mem F 395.6 MiB / S 395.9 MiB
+[10:39:23 AM] MOVE g=1 FIRST 5 3 5 6 · 850ms · score 38:31 · mem F 395.7 MiB / S 395.9 MiB
+[10:39:23 AM] MOVE g=1 SECOND 5 2 5 7 · 17ms · score 34:37 · mem F 395.8 MiB / S 395.9 MiB
+[10:39:24 AM] MOVE g=1 FIRST 6 1 6 2 · 148ms · score 36:37 · mem F 395.8 MiB / S 395.9 MiB
+[10:39:24 AM] MOVE g=1 SECOND 5 11 5 12 · 16ms · score 36:39 · mem F 395.8 MiB / S 395.9 MiB
+[10:39:24 AM] MOVE g=1 FIRST 4 6 6 6 · 196ms · score 39:38 · mem F 395.8 MiB / S 395.9 MiB
+[10:39:24 AM] MOVE g=1 SECOND 4 7 5 9 · 12ms · score 39:40 · mem F 395.8 MiB / S 395.9 MiB
+[10:39:24 AM] MOVE g=1 FIRST 1 7 6 7 · 141ms · score 43:38 · mem F 395.8 MiB / S 395.9 MiB
+[10:39:24 AM] MOVE g=1 SECOND 8 15 8 16 · 21ms · score 43:40 · mem F 395.8 MiB / S 395.9 MiB
+[10:39:24 AM] MOVE g=1 FIRST 7 15 9 15 · 65ms · score 46:39 · mem F 395.8 MiB / S 395.9 MiB
+[10:39:24 AM] MOVE g=1 SECOND 5 16 7 16 · 8ms · score 45:42 · mem F 395.8 MiB / S 395.9 MiB
+[10:39:24 AM] MOVE g=1 FIRST 5 12 6 13 · 185ms · score 48:41 · mem F 395.8 MiB / S 395.9 MiB
+[10:39:24 AM] MOVE g=1 SECOND 2 13 3 13 · 7ms · score 48:43 · mem F 395.8 MiB / S 395.9 MiB
+[10:39:24 AM] MOVE g=1 FIRST 2 10 2 14 · 215ms · score 52:41 · mem F 395.8 MiB / S 395.9 MiB
+[10:39:24 AM] MOVE g=1 SECOND 5 11 6 15 · 13ms · score 46:49 · mem F 395.8 MiB / S 395.9 MiB
+[10:39:25 AM] MOVE g=1 FIRST 3 15 9 16 · 147ms · score 54:43 · mem F 395.8 MiB / S 395.9 MiB
+[10:39:25 AM] MOVE g=1 SECOND 0 12 4 15 · 13ms · score 41:59 · mem F 395.8 MiB / S 395.9 MiB
+[10:39:25 AM] MOVE g=1 FIRST 2 10 3 16 · 14ms · score 52:50 · mem F 395.8 MiB / S 395.9 MiB
+[10:39:25 AM] MOVE g=1 SECOND 0 9 0 16 · 2ms · score 51:53 · mem F 395.8 MiB / S 395.9 MiB
+[10:39:25 AM] MOVE g=1 FIRST 6 10 7 11 · 25ms · score 55:52 · mem F 395.8 MiB / S 395.9 MiB
+[10:39:25 AM] MOVE g=1 SECOND 8 10 8 11 · 1ms · score 55:54 · mem F 395.8 MiB / S 395.9 MiB
+[10:39:25 AM] MOVE g=1 FIRST 8 9 9 10 · 6ms · score 59:53 · mem F 395.8 MiB / S 395.9 MiB
+[10:39:25 AM] MOVE g=1 SECOND 3 6 7 6 · 1ms · score 56:58 · mem F 395.8 MiB / S 395.9 MiB
+[10:39:25 AM] MOVE g=1 FIRST 6 4 7 7 · 1ms · score 60:56 · mem F 395.8 MiB / S 395.9 MiB
+[10:39:25 AM] MOVE g=1 SECOND PASS · 0ms · score 60:56 · mem F 395.8 MiB / S 395.9 MiB
+[10:39:25 AM] MOVE g=1 FIRST PASS · 1ms · score 60:56 · mem F 395.8 MiB / S 395.9 MiB
+[10:39:25 AM] DONE Game 1: A 60 - B 56 · A WIN · peak A 395.8 MiB · peak B 395.9 MiB
+[10:39:25 AM] START Dataset 1 · Game 2 · B FIRST / A SECOND
+[10:39:28 AM] DONE Game 2: A 0 - B 0 · DRAW · peak A 32 KiB · peak B 32 KiB
+[10:39:28 AM] START Dataset 2 · Game 3 · A FIRST / B SECOND
+[10:39:31 AM] DONE Game 3: A 0 - B 0 · DRAW · peak A 32 KiB · peak B 32 KiB
+[10:39:31 AM] START Dataset 2 · Game 4 · B FIRST / A SECOND
+[10:39:33 AM] MOVE g=4 FIRST 0 5 0 8 · 18ms · score 4:0 · mem F 346.6 MiB / S 32 KiB
+[10:39:33 AM] MOVE g=4 SECOND 0 0 2 0 · 68ms · score 4:3 · mem F 394.8 MiB / S 394.7 MiB
+[10:39:33 AM] MOVE g=4 FIRST 6 0 8 0 · 58ms · score 7:3 · mem F 394.8 MiB / S 394.9 MiB
+[10:39:33 AM] MOVE g=4 SECOND 4 0 4 2 · 69ms · score 7:6 · mem F 394.9 MiB / S 394.9 MiB
+[10:39:33 AM] MOVE g=4 FIRST 0 4 2 4 · 59ms · score 10:6 · mem F 394.9 MiB / S 394.9 MiB
+[10:39:33 AM] MOVE g=4 SECOND 7 10 9 10 · 61ms · score 10:9 · mem F 394.9 MiB / S 394.9 MiB
+[10:39:33 AM] MOVE g=4 FIRST 1 15 3 15 · 44ms · score 13:9 · mem F 394.9 MiB / S 395.0 MiB
+[10:39:34 AM] MOVE g=4 SECOND 4 12 4 14 · 32ms · score 13:12 · mem F 395.0 MiB / S 395.0 MiB
+[10:39:34 AM] MOVE g=4 FIRST 1 5 2 5 · 239ms · score 15:12 · mem F 395.1 MiB / S 395.0 MiB
+[10:39:34 AM] MOVE g=4 SECOND 5 1 5 2 · 27ms · score 15:14 · mem F 395.1 MiB / S 395.0 MiB
+[10:39:34 AM] MOVE g=4 FIRST 1 2 2 2 · 169ms · score 17:14 · mem F 395.1 MiB / S 395.1 MiB
+[10:39:34 AM] MOVE g=4 SECOND 0 13 0 14 · 22ms · score 17:16 · mem F 395.1 MiB / S 395.1 MiB
+[10:39:34 AM] MOVE g=4 FIRST 6 16 7 16 · 20ms · score 19:16 · mem F 395.1 MiB / S 395.1 MiB
+[10:39:34 AM] MOVE g=4 SECOND 9 14 9 15 · 17ms · score 19:18 · mem F 395.2 MiB / S 395.1 MiB
+[10:39:34 AM] MOVE g=4 FIRST 4 15 4 16 · 21ms · score 21:18 · mem F 395.2 MiB / S 395.1 MiB
+[10:39:34 AM] MOVE g=4 SECOND 8 1 9 1 · 92ms · score 21:20 · mem F 395.2 MiB / S 395.1 MiB
+[10:39:34 AM] MOVE g=4 FIRST 8 6 9 6 · 66ms · score 23:20 · mem F 395.2 MiB / S 395.2 MiB
+[10:39:34 AM] MOVE g=4 SECOND 4 7 5 7 · 51ms · score 23:22 · mem F 395.2 MiB / S 395.2 MiB
+[10:39:34 AM] MOVE g=4 FIRST 1 7 2 7 · 35ms · score 25:22 · mem F 395.2 MiB / S 395.2 MiB
+[10:39:34 AM] MOVE g=4 SECOND 3 6 4 6 · 38ms · score 25:24 · mem F 395.3 MiB / S 395.2 MiB
+[10:39:34 AM] MOVE g=4 FIRST 2 12 2 13 · 51ms · score 27:24 · mem F 395.3 MiB / S 395.2 MiB
+[10:39:34 AM] MOVE g=4 SECOND 3 10 3 11 · 19ms · score 27:26 · mem F 395.4 MiB / S 395.2 MiB
+[10:39:34 AM] MOVE g=4 FIRST 6 2 7 2 · 38ms · score 29:26 · mem F 395.4 MiB / S 395.2 MiB
+[10:39:35 AM] MOVE g=4 SECOND 8 2 8 3 · 34ms · score 29:28 · mem F 395.4 MiB / S 395.2 MiB
+[10:39:35 AM] MOVE g=4 FIRST 8 7 8 8 · 101ms · score 31:28 · mem F 395.4 MiB / S 395.3 MiB
+[10:39:35 AM] MOVE g=4 SECOND 7 7 9 7 · 92ms · score 30:31 · mem F 395.6 MiB / S 395.3 MiB
+[10:39:37 AM] MOVE g=4 FIRST 7 4 7 6 · 2.11s · score 33:31 · mem F 395.9 MiB / S 395.3 MiB
+[10:39:37 AM] MOVE g=4 SECOND 7 12 8 12 · 169ms · score 33:33 · mem F 395.9 MiB / S 395.4 MiB
+[10:39:37 AM] MOVE g=4 FIRST 7 11 7 13 · 0ms · score 36:32 · mem F 395.9 MiB / S 395.4 MiB
+[10:39:37 AM] MOVE g=4 SECOND 8 14 8 15 · 25ms · score 36:34 · mem F 395.9 MiB / S 395.4 MiB
+[10:39:37 AM] MOVE g=4 FIRST 5 6 6 6 · 0ms · score 38:34 · mem F 395.9 MiB / S 395.4 MiB
+[10:39:37 AM] MOVE g=4 SECOND 6 7 6 9 · 45ms · score 38:37 · mem F 395.9 MiB / S 395.4 MiB
+[10:39:37 AM] MOVE g=4 FIRST 5 5 5 8 · 0ms · score 41:36 · mem F 395.9 MiB / S 395.4 MiB
+[10:39:37 AM] MOVE g=4 SECOND 5 5 6 9 · 17ms · score 36:43 · mem F 395.9 MiB / S 395.4 MiB
+[10:39:37 AM] MOVE g=4 FIRST 5 4 7 8 · 7ms · score 48:34 · mem F 395.9 MiB / S 395.4 MiB
+[10:39:37 AM] MOVE g=4 SECOND 4 8 9 8 · 3ms · score 44:40 · mem F 395.9 MiB / S 395.4 MiB
+[10:39:37 AM] MOVE g=4 FIRST PASS · 2ms · score 44:40 · mem F 395.9 MiB / S 395.4 MiB
+[10:39:37 AM] MOVE g=4 SECOND 4 4 8 4 · 0ms · score 41:45 · mem F 395.9 MiB / S 395.4 MiB
+[10:39:37 AM] MOVE g=4 FIRST 2 4 4 6 · 0ms · score 48:42 · mem F 395.9 MiB / S 395.4 MiB
+[10:39:37 AM] MOVE g=4 SECOND 2 3 2 8 · 0ms · score 44:48 · mem F 395.9 MiB / S 395.4 MiB
+[10:39:37 AM] MOVE g=4 FIRST 1 1 2 3 · 0ms · score 48:47 · mem F 395.9 MiB / S 395.4 MiB
+[10:39:37 AM] MOVE g=4 SECOND PASS · 0ms · score 48:47 · mem F 395.9 MiB / S 395.4 MiB
+[10:39:37 AM] MOVE g=4 FIRST PASS · 0ms · score 48:47 · mem F 395.9 MiB / S 395.4 MiB
+[10:39:37 AM] DONE Game 4: A 47 - B 48 · B WIN · peak A 395.4 MiB · peak B 395.9 MiB
+[10:39:37 AM] START Dataset 3 · Game 5 · A FIRST / B SECOND
+[10:39:40 AM] DONE Game 5: A 0 - B 0 · DRAW · peak A 32 KiB · peak B 32 KiB
+[10:39:40 AM] START Dataset 3 · Game 6 · B FIRST / A SECOND
+[10:39:43 AM] DONE Game 6: A 0 - B 0 · DRAW · peak A 32 KiB · peak B 32 KiB
+[10:39:43 AM] START Dataset 4 · Game 7 · A FIRST / B SECOND
+[10:39:46 AM] DONE Game 7: A 0 - B 0 · DRAW · peak A 32 KiB · peak B 32 KiB
+[10:39:46 AM] START Dataset 4 · Game 8 · B FIRST / A SECOND
+[10:39:49 AM] MOVE g=8 FIRST 3 7 3 10 · 57ms · score 4:0 · mem F 394.6 MiB / S 314.2 MiB
+[10:39:49 AM] MOVE g=8 SECOND 7 15 8 16 · 64ms · score 4:4 · mem F 394.8 MiB / S 394.8 MiB
+[10:39:49 AM] MOVE g=8 FIRST 5 9 8 9 · 46ms · score 8:4 · mem F 394.8 MiB / S 394.9 MiB
+[10:39:49 AM] MOVE g=8 SECOND 9 7 9 9 · 47ms · score 8:7 · mem F 394.8 MiB / S 394.9 MiB
+[10:39:50 AM] MOVE g=8 FIRST 1 6 1 8 · 36ms · score 11:7 · mem F 394.8 MiB / S 394.9 MiB
+[10:39:50 AM] MOVE g=8 SECOND 6 6 6 8 · 45ms · score 11:10 · mem F 394.9 MiB / S 394.9 MiB
+[10:39:50 AM] MOVE g=8 FIRST 8 1 8 3 · 29ms · score 14:10 · mem F 394.9 MiB / S 395.0 MiB
+[10:39:50 AM] MOVE g=8 SECOND 4 10 5 10 · 285ms · score 14:12 · mem F 395.0 MiB / S 395.1 MiB
+[10:39:50 AM] MOVE g=8 FIRST 0 4 0 5 · 178ms · score 16:12 · mem F 395.0 MiB / S 395.2 MiB
+[10:39:50 AM] MOVE g=8 SECOND 1 10 2 10 · 19ms · score 16:14 · mem F 395.1 MiB / S 395.2 MiB
+[10:39:50 AM] MOVE g=8 FIRST 4 14 4 16 · 25ms · score 19:14 · mem F 395.1 MiB / S 395.2 MiB
+[10:39:50 AM] MOVE g=8 SECOND 3 14 5 14 · 17ms · score 18:17 · mem F 395.1 MiB / S 395.2 MiB
+[10:39:50 AM] MOVE g=8 FIRST 3 11 3 12 · 13ms · score 20:17 · mem F 395.1 MiB / S 395.2 MiB
+[10:39:50 AM] MOVE g=8 SECOND 0 13 0 14 · 48ms · score 20:19 · mem F 395.1 MiB / S 395.2 MiB
+[10:39:50 AM] MOVE g=8 FIRST 0 9 1 9 · 38ms · score 22:19 · mem F 395.2 MiB / S 395.3 MiB
+[10:39:50 AM] MOVE g=8 SECOND 9 11 9 12 · 26ms · score 22:21 · mem F 395.2 MiB / S 395.3 MiB
+[10:39:50 AM] MOVE g=8 FIRST 5 4 5 5 · 18ms · score 24:21 · mem F 395.2 MiB / S 395.3 MiB
+[10:39:50 AM] MOVE g=8 SECOND 1 13 2 13 · 25ms · score 24:23 · mem F 395.3 MiB / S 395.3 MiB
+[10:39:50 AM] MOVE g=8 FIRST 3 2 3 3 · 15ms · score 26:23 · mem F 395.3 MiB / S 395.4 MiB
+[10:39:50 AM] MOVE g=8 SECOND 1 14 2 14 · 54ms · score 26:25 · mem F 395.4 MiB / S 395.4 MiB
+[10:39:50 AM] MOVE g=8 FIRST 2 6 2 7 · 97ms · score 28:25 · mem F 395.5 MiB / S 395.4 MiB
+[10:39:51 AM] MOVE g=8 SECOND 8 11 8 12 · 41ms · score 28:27 · mem F 395.5 MiB / S 395.4 MiB
+[10:39:51 AM] MOVE g=8 FIRST 1 0 1 1 · 125ms · score 30:27 · mem F 395.5 MiB / S 395.4 MiB
+[10:39:51 AM] MOVE g=8 SECOND 3 13 4 13 · 145ms · score 30:29 · mem F 395.7 MiB / S 395.5 MiB
+[10:39:51 AM] MOVE g=8 FIRST 5 12 5 13 · 62ms · score 32:29 · mem F 395.7 MiB / S 395.6 MiB
+[10:39:51 AM] MOVE g=8 SECOND 5 15 5 16 · 51ms · score 32:31 · mem F 395.7 MiB / S 395.6 MiB
+[10:39:52 AM] MOVE g=8 FIRST PASS · 1.24s · score 32:31 · mem F 395.9 MiB / S 395.6 MiB
+[10:39:52 AM] MOVE g=8 SECOND 8 5 8 6 · 17ms · score 32:33 · mem F 395.9 MiB / S 395.6 MiB
+[10:39:52 AM] MOVE g=8 FIRST 8 0 8 7 · 3ms · score 37:31 · mem F 395.9 MiB / S 395.6 MiB
+[10:39:52 AM] MOVE g=8 SECOND 9 3 9 4 · 32ms · score 37:33 · mem F 395.9 MiB / S 395.6 MiB
+[10:39:52 AM] MOVE g=8 FIRST PASS · 6ms · score 37:33 · mem F 395.9 MiB / S 395.6 MiB
+[10:39:52 AM] MOVE g=8 SECOND 1 1 2 2 · 49ms · score 36:37 · mem F 395.9 MiB / S 395.6 MiB
+[10:39:52 AM] MOVE g=8 FIRST 0 1 3 2 · 4ms · score 43:33 · mem F 395.9 MiB / S 395.6 MiB
+[10:39:52 AM] MOVE g=8 SECOND 3 0 3 4 · 5ms · score 40:38 · mem F 395.9 MiB / S 395.6 MiB
+[10:39:52 AM] MOVE g=8 FIRST 0 0 0 3 · 2ms · score 42:38 · mem F 395.9 MiB / S 395.6 MiB
+[10:39:52 AM] MOVE g=8 SECOND PASS · 3ms · score 42:38 · mem F 395.9 MiB / S 395.6 MiB
+[10:39:52 AM] MOVE g=8 FIRST PASS · 1ms · score 42:38 · mem F 395.9 MiB / S 395.6 MiB
+[10:39:52 AM] DONE Game 8: A 38 - B 42 · B WIN · peak A 395.6 MiB · peak B 395.9 MiB
+[10:39:52 AM] START Dataset 5 · Game 9 · A FIRST / B SECOND
+[10:39:55 AM] DONE Game 9: A 0 - B 0 · DRAW · peak A 32 KiB · peak B 32 KiB
+[10:39:55 AM] START Dataset 5 · Game 10 · B FIRST / A SECOND
+[10:39:58 AM] DONE Game 10: A 0 - B 0 · DRAW · peak A 32 KiB · peak B 32 KiB
+[10:39:58 AM] START Dataset 6 · Game 11 · A FIRST / B SECOND
+[10:40:01 AM] DONE Game 11: A 0 - B 0 · DRAW · peak A 32 KiB · peak B 32 KiB
+[10:40:01 AM] START Dataset 6 · Game 12 · B FIRST / A SECOND
+[10:40:04 AM] DONE Game 12: A 0 - B 0 · DRAW · peak A 32 KiB · peak B 32 KiB
+[10:40:04 AM] START Dataset 7 · Game 13 · A FIRST / B SECOND
+[10:40:07 AM] MOVE g=13 FIRST 5 16 8 16 · 45ms · score 4:0 · mem F 394.6 MiB / S 394.6 MiB
+[10:40:07 AM] MOVE g=13 SECOND 6 13 7 14 · 54ms · score 4:4 · mem F 394.8 MiB / S 394.8 MiB
+[10:40:07 AM] MOVE g=13 FIRST 2 16 4 16 · 50ms · score 7:4 · mem F 394.8 MiB / S 394.8 MiB
+[10:40:07 AM] MOVE g=13 SECOND 3 12 5 12 · 42ms · score 7:7 · mem F 394.9 MiB / S 394.9 MiB
+[10:40:07 AM] MOVE g=13 FIRST 1 11 1 13 · 33ms · score 10:7 · mem F 394.9 MiB / S 394.9 MiB
+[10:40:07 AM] MOVE g=13 SECOND 8 7 8 9 · 62ms · score 10:10 · mem F 395.0 MiB / S 394.9 MiB
+[10:40:07 AM] MOVE g=13 FIRST 8 10 8 12 · 32ms · score 13:10 · mem F 395.0 MiB / S 394.9 MiB
+[10:40:07 AM] MOVE g=13 SECOND 1 9 2 9 · 51ms · score 13:12 · mem F 395.0 MiB / S 394.9 MiB
+[10:40:08 AM] MOVE g=13 FIRST 8 6 9 7 · 235ms · score 17:11 · mem F 395.1 MiB / S 395.0 MiB
+[10:40:08 AM] MOVE g=13 SECOND 6 6 6 8 · 215ms · score 17:14 · mem F 395.1 MiB / S 395.0 MiB
+[10:40:08 AM] MOVE g=13 FIRST 0 10 0 11 · 196ms · score 19:14 · mem F 395.2 MiB / S 395.1 MiB
+[10:40:08 AM] MOVE g=13 SECOND 2 6 4 6 · 33ms · score 19:17 · mem F 395.2 MiB / S 395.1 MiB
+[10:40:08 AM] MOVE g=13 FIRST 4 3 4 7 · 15ms · score 24:16 · mem F 395.2 MiB / S 395.1 MiB
+[10:40:08 AM] MOVE g=13 SECOND 8 3 9 3 · 95ms · score 24:18 · mem F 395.2 MiB / S 395.1 MiB
+[10:40:08 AM] MOVE g=13 FIRST 5 4 6 4 · 111ms · score 26:18 · mem F 395.2 MiB / S 395.1 MiB
+[10:40:08 AM] MOVE g=13 SECOND 7 10 9 10 · 175ms · score 25:21 · mem F 395.2 MiB / S 395.1 MiB
+[10:40:08 AM] MOVE g=13 FIRST 6 12 7 12 · 39ms · score 27:21 · mem F 395.2 MiB / S 395.2 MiB
+[10:40:09 AM] MOVE g=13 SECOND 2 12 9 12 · 37ms · score 24:26 · mem F 395.2 MiB / S 395.2 MiB
+[10:40:09 AM] MOVE g=13 FIRST 6 11 6 15 · 67ms · score 29:23 · mem F 395.2 MiB / S 395.2 MiB
+[10:40:09 AM] MOVE g=13 SECOND 5 11 7 11 · 46ms · score 28:26 · mem F 395.2 MiB / S 395.2 MiB
+[10:40:09 AM] MOVE g=13 FIRST 5 0 5 1 · 838ms · score 30:26 · mem F 395.4 MiB / S 395.3 MiB
+[10:40:10 AM] MOVE g=13 SECOND 0 12 0 13 · 113ms · score 30:28 · mem F 395.4 MiB / S 395.3 MiB
+[10:40:10 AM] MOVE g=13 FIRST 8 1 8 2 · 39ms · score 32:28 · mem F 395.4 MiB / S 395.3 MiB
+[10:40:10 AM] MOVE g=13 SECOND 5 5 5 6 · 60ms · score 32:30 · mem F 395.4 MiB / S 395.3 MiB
+[10:40:10 AM] MOVE g=13 FIRST 4 13 4 14 · 268ms · score 34:30 · mem F 395.4 MiB / S 395.4 MiB
+[10:40:14 AM] DONE Game 13: A 34 - B 30 · A WIN · peak A 395.4 MiB · peak B 395.8 MiB
+[10:40:14 AM] START Dataset 7 · Game 14 · B FIRST / A SECOND
+[10:40:17 AM] MOVE g=14 FIRST 5 16 8 16 · 58ms · score 4:0 · mem F 394.6 MiB / S 341.8 MiB
+[10:40:17 AM] MOVE g=14 SECOND 6 13 7 14 · 59ms · score 4:4 · mem F 394.8 MiB / S 394.8 MiB
+[10:40:17 AM] MOVE g=14 FIRST 2 16 4 16 · 48ms · score 7:4 · mem F 394.8 MiB / S 394.9 MiB
+[10:40:17 AM] MOVE g=14 SECOND 3 12 5 12 · 42ms · score 7:7 · mem F 394.9 MiB / S 394.9 MiB
+[10:40:17 AM] MOVE g=14 FIRST 1 11 1 13 · 34ms · score 10:7 · mem F 394.9 MiB / S 394.9 MiB
+[10:40:17 AM] MOVE g=14 SECOND 8 7 8 9 · 63ms · score 10:10 · mem F 394.9 MiB / S 395.0 MiB
+[10:40:17 AM] MOVE g=14 FIRST 8 10 8 12 · 30ms · score 13:10 · mem F 394.9 MiB / S 395.0 MiB
+[10:40:17 AM] MOVE g=14 SECOND 1 9 2 9 · 47ms · score 13:12 · mem F 394.9 MiB / S 395.0 MiB
+[10:40:17 AM] MOVE g=14 FIRST 8 6 9 7 · 229ms · score 17:11 · mem F 395.0 MiB / S 395.0 MiB
+[10:40:18 AM] MOVE g=14 SECOND 6 6 6 8 · 217ms · score 17:14 · mem F 395.0 MiB / S 395.1 MiB
+[10:40:18 AM] MOVE g=14 FIRST 0 10 0 11 · 187ms · score 19:14 · mem F 395.1 MiB / S 395.1 MiB
+[10:40:18 AM] MOVE g=14 SECOND 2 6 4 6 · 33ms · score 19:17 · mem F 395.1 MiB / S 395.1 MiB
+[10:40:18 AM] MOVE g=14 FIRST 4 3 4 7 · 14ms · score 24:16 · mem F 395.1 MiB / S 395.1 MiB
+[10:40:18 AM] MOVE g=14 SECOND 8 3 9 3 · 114ms · score 24:18 · mem F 395.1 MiB / S 395.1 MiB
+[10:40:18 AM] MOVE g=14 FIRST 5 4 6 4 · 115ms · score 26:18 · mem F 395.1 MiB / S 395.2 MiB
+[10:40:18 AM] MOVE g=14 SECOND 7 10 9 10 · 170ms · score 25:21 · mem F 395.1 MiB / S 395.2 MiB
+[10:40:18 AM] MOVE g=14 FIRST 6 12 7 12 · 37ms · score 27:21 · mem F 395.1 MiB / S 395.2 MiB
+[10:40:18 AM] MOVE g=14 SECOND 2 12 9 12 · 35ms · score 24:26 · mem F 395.2 MiB / S 395.2 MiB
+[10:40:18 AM] MOVE g=14 FIRST 6 11 6 15 · 63ms · score 29:23 · mem F 395.2 MiB / S 395.2 MiB
+[10:40:18 AM] MOVE g=14 SECOND 5 11 7 11 · 46ms · score 28:26 · mem F 395.2 MiB / S 395.2 MiB
+[10:40:19 AM] MOVE g=14 FIRST 8 1 8 2 · 850ms · score 30:26 · mem F 395.4 MiB / S 395.2 MiB
+[10:40:20 AM] MOVE g=14 SECOND 5 0 6 0 · 755ms · score 30:28 · mem F 395.3 MiB / S 395.3 MiB
+[10:40:20 AM] MOVE g=14 FIRST 4 13 4 14 · 135ms · score 32:28 · mem F 395.3 MiB / S 395.3 MiB
+[10:40:20 AM] MOVE g=14 SECOND 5 3 6 3 · 85ms · score 32:30 · mem F 395.3 MiB / S 395.3 MiB
+[10:40:20 AM] MOVE g=14 FIRST 4 10 5 10 · 134ms · score 34:30 · mem F 395.2 MiB / S 395.4 MiB
+[10:40:21 AM] MOVE g=14 SECOND 0 12 0 13 · 93ms · score 34:32 · mem F 395.3 MiB / S 395.4 MiB
+[10:40:24 AM] DONE Game 14: A 32 - B 34 · B WIN · peak A 395.4 MiB · peak B 395.4 MiB
+[10:40:24 AM] START Dataset 8 · Game 15 · A FIRST / B SECOND
+[10:40:27 AM] DONE Game 15: A 0 - B 0 · DRAW · peak A 32 KiB · peak B 32 KiB
+[10:40:27 AM] START Dataset 8 · Game 16 · B FIRST / A SECOND
+[10:40:30 AM] MOVE g=16 FIRST 1 12 2 14 · 58ms · score 6:0 · mem F 394.8 MiB / S 394.6 MiB
+[10:40:30 AM] MOVE g=16 SECOND 7 12 7 16 · 46ms · score 6:5 · mem F 394.8 MiB / S 394.7 MiB
+[10:40:30 AM] MOVE g=16 FIRST 6 16 8 16 · 41ms · score 9:4 · mem F 394.8 MiB / S 394.8 MiB
+[10:40:30 AM] MOVE g=16 SECOND 6 8 7 9 · 34ms · score 9:8 · mem F 394.9 MiB / S 394.8 MiB
+[10:40:30 AM] MOVE g=16 FIRST 5 7 6 8 · 46ms · score 13:7 · mem F 394.9 MiB / S 394.8 MiB
+[10:40:31 AM] MOVE g=16 SECOND 8 0 8 2 · 58ms · score 13:10 · mem F 394.9 MiB / S 394.9 MiB
+[10:40:31 AM] MOVE g=16 FIRST 6 13 6 15 · 65ms · score 16:10 · mem F 394.9 MiB / S 394.9 MiB
+[10:40:31 AM] MOVE g=16 SECOND 5 12 6 13 · 46ms · score 15:14 · mem F 395.0 MiB / S 394.9 MiB
+[10:40:31 AM] MOVE g=16 FIRST 5 11 5 14 · 24ms · score 19:12 · mem F 395.0 MiB / S 395.0 MiB
+[10:40:31 AM] MOVE g=16 SECOND 4 10 4 13 · 160ms · score 19:16 · mem F 395.0 MiB / S 395.0 MiB
+[10:40:31 AM] MOVE g=16 FIRST 7 7 9 7 · 155ms · score 22:16 · mem F 395.0 MiB / S 395.0 MiB
+[10:40:31 AM] MOVE g=16 SECOND 5 2 5 4 · 26ms · score 22:19 · mem F 395.1 MiB / S 395.0 MiB
+[10:40:31 AM] MOVE g=16 FIRST 7 11 9 11 · 14ms · score 25:19 · mem F 395.1 MiB / S 395.0 MiB
+[10:40:31 AM] MOVE g=16 SECOND 6 3 6 4 · 20ms · score 25:21 · mem F 395.1 MiB / S 395.0 MiB
+[10:40:31 AM] MOVE g=16 FIRST 0 1 0 2 · 21ms · score 27:21 · mem F 395.1 MiB / S 395.1 MiB
+[10:40:31 AM] MOVE g=16 SECOND 0 11 1 11 · 18ms · score 27:23 · mem F 395.1 MiB / S 395.1 MiB
+[10:40:31 AM] MOVE g=16 FIRST 5 6 6 6 · 93ms · score 29:23 · mem F 395.1 MiB / S 395.1 MiB
+[10:40:31 AM] MOVE g=16 SECOND 4 5 4 6 · 79ms · score 29:25 · mem F 395.2 MiB / S 395.2 MiB
+[10:40:31 AM] MOVE g=16 FIRST 7 6 8 6 · 85ms · score 31:25 · mem F 395.2 MiB / S 395.2 MiB
+[10:40:32 AM] MOVE g=16 SECOND 6 0 7 0 · 590ms · score 31:27 · mem F 395.2 MiB / S 395.3 MiB
+[10:40:33 AM] MOVE g=16 FIRST 2 0 2 1 · 610ms · score 33:27 · mem F 395.5 MiB / S 395.3 MiB
+[10:40:33 AM] MOVE g=16 SECOND 1 2 2 2 · 110ms · score 33:29 · mem F 395.5 MiB / S 395.3 MiB
+[10:40:33 AM] MOVE g=16 FIRST 2 3 2 4 · 25ms · score 35:29 · mem F 395.5 MiB / S 395.3 MiB
+[10:40:33 AM] MOVE g=16 SECOND 4 1 4 2 · 42ms · score 35:31 · mem F 395.5 MiB / S 395.3 MiB
+[10:40:33 AM] MOVE g=16 FIRST 1 8 1 10 · 129ms · score 38:31 · mem F 395.5 MiB / S 395.3 MiB
+[10:40:33 AM] MOVE g=16 SECOND 0 10 2 10 · 105ms · score 37:34 · mem F 395.6 MiB / S 395.3 MiB
+[10:40:36 AM] MOVE g=16 FIRST 6 1 7 1 · 2.99s · score 39:34 · mem F 396.0 MiB / S 395.5 MiB
+[10:40:36 AM] MOVE g=16 SECOND 7 3 8 3 · 126ms · score 39:36 · mem F 396.0 MiB / S 395.5 MiB
+[10:40:36 AM] MOVE g=16 FIRST PASS · 1ms · score 39:36 · mem F 396.0 MiB / S 395.5 MiB
