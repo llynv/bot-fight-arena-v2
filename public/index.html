@@ -4,25 +4,47 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Bot Fight Arena</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brandMark"><i></i><i></i><i></i><i></i></div>
+      <div class="brandName">BOT&nbsp;FIGHT&nbsp;ARENA</div>
+      <div class="brandTag">v2 · LOCAL</div>
+    </div>
+    <nav class="topnav" id="topnav">
+      <button type="button" class="navBtn active" data-view="setup">Setup</button>
+      <button type="button" class="navBtn" data-view="duel" id="navDuel">Duel</button>
+      <button type="button" class="navBtn" data-view="tournament" id="navTournament">Tournament</button>
+      <button type="button" class="navBtn" data-view="inspector">Inspector</button>
+      <button type="button" class="navBtn" data-view="compare" id="navCompare">Compare</button>
+    </nav>
+    <div class="topStatus">
+      <span class="runnerTag"><span class="liveDot" id="topLiveDot"></span><span id="topStatusText">IDLE</span></span>
+    </div>
+  </header>
+
   <main class="shell">
+    <div class="view active" id="view-setup">
     <section class="hero">
       <div class="heroText">
-        <p class="eyebrow">Mushroom Game Local Arena</p>
-        <h1>Bot Fight Arena</h1>
-        <p class="muted heroLead">Upload 2 bot C++, chỉnh clock từng bên, chọn số dataset rồi cho đấu theo protocol thật. UI mới tách rõ từng dataset và từng lượt đổi role FIRST/SECOND.</p>
+        <p class="eyebrow" id="heroEyebrow">// Local Arena</p>
+        <h1>Compile bots. Run the gauntlet.<br>Settle it on the board.</h1>
+        <p class="muted heroLead">Upload 2 bot C++, chỉnh clock từng bên, chọn số dataset rồi cho đấu theo protocol thật. UI tách rõ từng dataset và từng lượt đổi role FIRST/SECOND. Engine generic — đổi game judge ở picker.</p>
       </div>
       <div class="heroPanel">
-        <div class="heroStat"><b>10×17</b><span>Board</span></div>
-        <div class="heroStat"><b id="heroBotClocks">30s / 30s</b><span>Bot clocks</span></div>
-        <div class="heroStat"><b id="heroProcessLimit">85s</b><span>Process cap</span></div>
-        <div class="heroStat"><b id="heroDatasetCount">30</b><span>Datasets</span></div>
+        <div class="heroStat"><span>Board</span><b id="heroBoard">—</b></div>
+        <div class="heroStat"><span>Bot clocks</span><b id="heroBotClocks">30s / 30s</b></div>
+        <div class="heroStat"><span>Process cap</span><b id="heroProcessLimit">85s</b></div>
+        <div class="heroStat"><span>Datasets</span><b id="heroDatasetCount">30</b></div>
       </div>
     </section>
 
-    <section class="card setupCard">
+    <section id="setupCard" class="card setupCard">
       <form id="fightForm">
         <div class="sectionTitle">
           <div>
@@ -197,7 +219,10 @@
         </div>
       </form>
     </section>
+    </div><!-- /view-setup -->
 
+    <div class="view" id="view-results">
+    <div class="viewEmpty emptyState">No results yet — configure bots in <b>Setup</b> and hit <b>Start Fight</b>.</div>
     <section id="statusCard" class="card hidden">
       <div class="sectionTitle">
         <div>
@@ -218,6 +243,8 @@
           <p class="muted">Tổng hợp theo góc nhìn Bot A/B. Nếu bật đảo lượt, mỗi dataset gồm 2 game riêng biệt.</p>
         </div>
       </div>
+      <div id="arenaReliability" class="dashPanel hidden"></div>
+      <div id="stabilityScatter" class="dashPanel hidden"></div>
       <div id="standings" class="standingsGrid"></div>
       <div id="tournamentAnalyticsChart" class="hidden"></div>
       <div id="tournamentStandingsWrap" class="hidden">
@@ -225,6 +252,7 @@
           <table id="tournamentStandingsTable" class="standingsTable"></table>
         </div>
       </div>
+      <div id="overallAnalysis" class="dashPanel hidden"></div>
     </section>
 
     <section id="gamesCard" class="card hidden">
@@ -282,6 +310,32 @@
       </div>
     </section>
 
+    <section id="eventsCard" class="card hidden">
+      <div class="logsHead">
+        <span class="dashLabel">COMPILE LOGS &amp; LIVE EVENTS</span>
+        <span class="liveStreamDot"></span>
+      </div>
+      <div class="logsGrid">
+        <details open>
+          <summary>
+            <span>Compile logs</span>
+            <small>stdout/stderr from compiler candidates</small>
+          </summary>
+          <pre id="compileLogs"></pre>
+        </details>
+        <details open>
+          <summary>
+            <span>Live events stream</span>
+            <small>compile, start game, move, finish</small>
+          </summary>
+          <pre id="events"></pre>
+        </details>
+      </div>
+    </section>
+    </div><!-- /view-results -->
+
+    <div class="view" id="view-inspector">
+    <div class="viewEmpty emptyState">No games yet — run a fight, then replay any game turn-by-turn here.</div>
     <section id="inspectorCard" class="card hidden">
       <div class="sectionTitle">
         <div>
@@ -336,24 +390,31 @@
         </div>
       </div>
     </section>
+    </div><!-- /view-inspector -->
 
-    <section id="eventsCard" class="card hidden">
-      <details>
-        <summary>
-          <span>Compile logs</span>
-          <small>stdout/stderr from compiler candidates</small>
-        </summary>
-        <pre id="compileLogs"></pre>
-      </details>
-      <details open>
-        <summary>
-          <span>Live events</span>
-          <small>Compile, start game, move, finish</small>
-        </summary>
-        <pre id="events"></pre>
-      </details>
+    <div class="view" id="view-compare">
+    <section class="card">
+      <div class="sectionTitle">
+        <div>
+          <h2>Version compare</h2>
+          <p class="muted">So sánh 2 bot head-to-head trên cùng seed — win%, margin, độ ổn định, reliability. Chạy 1 tournament (≥2 bot) trước.</p>
+        </div>
+        <div class="comparePickers">
+          <select id="compareA" class="comparePick"></select>
+          <span class="compareVs">vs</span>
+          <select id="compareB" class="comparePick"></select>
+        </div>
+      </div>
+      <div id="compareBody">
+        <div class="viewEmpty emptyState">Run a tournament with 2+ bots, then pick two to compare.</div>
+      </div>
     </section>
+    </div><!-- /view-compare -->
   </main>
+
+  <div id="detailOverlay" class="modalOverlay hidden">
+    <div id="detailModal" class="modalBox" role="dialog" aria-modal="true"></div>
+  </div>
 
   <script src="/games/mushroom/renderer.js"></script>
   <script src="/app.js"></script>

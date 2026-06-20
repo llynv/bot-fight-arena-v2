@@ -74,6 +74,11 @@ function createBotAnalytics(bot) {
     secondScoreTotal: 0,
     cellsDiffSamples: [],
     cellsDiffTotal: 0,
+    sweptCount: 0,
+    sweptAgainstCount: 0,
+    formResults: [],
+    matchScoreDist: {}, // match.score bucket (e.g. '2.0','1.5','1.0','0.5','0.0') -> count
+    gameScoreSamples: [], // per-game raw score (capped) for histogram
     timeoutCount: 0,
     invalidCount: 0,
     crashCount: 0,
@@ -159,6 +164,8 @@ function recordGameForBot(botStats, opponentId, gameWon, draw, asFirst, score, s
   else if (gameWon) botStats.gameWins++;
   else botStats.gameLosses++;
 
+  if (botStats.gameScoreSamples.length < 2000) botStats.gameScoreSamples.push(score);
+
   if (asFirst) {
     botStats.firstScoreTotal += score;
     if (draw) botStats.gameDrawsAsFirst++;
@@ -219,17 +226,35 @@ function recordMatch(analytics, match, games, botMap, maxMatchScore) {
       botB.matchLosses++;
       oppA.wins++;
       oppB.losses++;
+      botA.formResults.push('W');
+      botB.formResults.push('L');
     } else if (match.classificationA === 'draw') {
       botA.matchDraws++;
       botB.matchDraws++;
       oppA.draws++;
       oppB.draws++;
+      botA.formResults.push('D');
+      botB.formResults.push('D');
     } else {
       botA.matchLosses++;
       botB.matchWins++;
       oppA.losses++;
       oppB.wins++;
+      botA.formResults.push('L');
+      botB.formResults.push('W');
     }
+
+    // sweep tracking: won/lost both sides of a play-both-sides match
+    if (match.scoreA >= maxMatchScore) botA.sweptCount++;
+    if (match.scoreA <= 0) botA.sweptAgainstCount++;
+    if (match.scoreB >= maxMatchScore) botB.sweptCount++;
+    if (match.scoreB <= 0) botB.sweptAgainstCount++;
+
+    // match-point distribution buckets (e.g. 2.0/1.5/1.0/0.5/0.0)
+    const bucketA = (Math.round(match.scoreA * 2) / 2).toFixed(1);
+    const bucketB = (Math.round(match.scoreB * 2) / 2).toFixed(1);
+    botA.matchScoreDist[bucketA] = (botA.matchScoreDist[bucketA] || 0) + 1;
+    botB.matchScoreDist[bucketB] = (botB.matchScoreDist[bucketB] || 0) + 1;
 
     const cellA = ensurePairCell(analytics.pairMatrix, match.botAId, match.botBId);
     const cellB = ensurePairCell(analytics.pairMatrix, match.botBId, match.botAId);
@@ -331,6 +356,11 @@ function finalizeAnalytics(analytics) {
       secondWinPct,
       firstScoreAvg: firstGames ? bot.firstScoreTotal / firstGames : 0,
       secondScoreAvg: secondGames ? bot.secondScoreTotal / secondGames : 0,
+      marginStdDev: stdDev(bot.cellsDiffSamples),
+      expPtsPerMatch: avgMatchScore,
+      sweptPct: matchesPlayed ? bot.sweptCount / matchesPlayed : 0,
+      sweptAgainstPct: matchesPlayed ? bot.sweptAgainstCount / matchesPlayed : 0,
+      form: bot.formResults.slice(-6),
       nonOkRate,
       powerScore,
       safetyScore,

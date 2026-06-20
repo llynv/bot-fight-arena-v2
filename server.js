@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { compileCpp } = require('./src/core/runtime');
+const { exeName } = require('./src/core/runtime/platform');
 const { runFight } = require('./src/core/runner/runFight');
 const { runTournament } = require('./src/core/runner/runTournament');
 const { summarizeGame } = require('./src/core/summarize');
@@ -34,8 +35,8 @@ const upload = multer({
     const lowerName = file.originalname.toLowerCase();
     if ((file.fieldname === 'botA' || file.fieldname === 'botB') && !lowerName.endsWith('.cpp')) {
       cb(new Error('Only .cpp files are accepted.'));
-    } else if ((file.fieldname === 'botAData' || file.fieldname === 'botBData') && lowerName !== 'data.bin') {
-      cb(new Error('Only data.bin files are accepted for bot data.'));
+    } else if ((file.fieldname === 'botAData' || file.fieldname === 'botBData') && !lowerName.endsWith('.bin')) {
+      cb(new Error('Only .bin files are accepted for bot data.'));
     } else if (!['botA', 'botB', 'botAData', 'botBData'].includes(file.fieldname)) {
       cb(new Error('Unexpected upload field.'));
     } else {
@@ -57,7 +58,7 @@ const tournamentUpload = multer({
       return cb(null, true);
     }
     if (/^botData_\d+$/.test(file.fieldname)) {
-      if (lowerName !== 'data.bin') return cb(new Error('Only data.bin files are accepted for tournament bot data.'));
+      if (!lowerName.endsWith('.bin')) return cb(new Error('Only .bin files are accepted for tournament bot data.'));
       return cb(null, true);
     }
     cb(null, true);
@@ -402,8 +403,8 @@ app.post('/api/start', upload.fields([{ name: 'botA', maxCount: 1 }, { name: 'bo
         try { if (file) fs.unlinkSync(file.path); } catch (_) {}
       }
 
-      const botAExe = path.join(botADir, 'bot');
-      const botBExe = path.join(botBDir, 'bot');
+      const botAExe = path.join(botADir, exeName());
+      const botBExe = path.join(botBDir, exeName());
       const aLog = await compileCpp(botASrc, botAExe, { timeoutMs: 45000 });
       job.compileLogs.push({ bot: 'A', stderr: aLog.stderr || '', stdout: aLog.stdout || '' });
       const bLog = await compileCpp(botBSrc, botBExe, { timeoutMs: 45000 });
@@ -515,7 +516,7 @@ app.post('/api/tournaments/start', tournamentUpload.any(), async (req, res) => {
         const sourceName = safeName(file.originalname);
         const srcPath = path.join(job.dir, `${botId}_${sourceName}`);
         const botDir = path.join(job.dir, botId);
-        const exePath = path.join(botDir, 'bot');
+        const exePath = path.join(botDir, exeName());
         const dataFile = dataFiles.get(i) || null;
         fs.mkdirSync(botDir, { recursive: true });
         fs.copyFileSync(file.path, srcPath);

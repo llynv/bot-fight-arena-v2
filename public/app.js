@@ -99,14 +99,36 @@ function activeRenderer() {
 }
 
 function scoreNoun() {
-  return activeRenderer()?.meta?.scoreNoun || 'pts';
+  return gamesMeta[currentJob?.gameId]?.display?.scoreNoun
+    || activeRenderer()?.meta?.scoreNoun || 'pts';
 }
 
 const gameSelect = document.getElementById('gameSelect');
 const gameSelectField = document.getElementById('gameSelectField');
+const heroBoard = document.getElementById('heroBoard');
+const heroEyebrow = document.getElementById('heroEyebrow');
+const gamesMeta = {}; // gameId -> { id, name, display:{cols,rows,boardLabel,scoreNoun}, timing }
 
 function selectedGameId() {
   return gameSelect?.value || 'mushroom';
+}
+
+// Drive generic UI labels (board size, score noun, eyebrow) from the selected
+// game's registry metadata — nothing is hardcoded to a specific game.
+function gameMeta(id) {
+  return gamesMeta[id || selectedGameId()] || null;
+}
+function gameBoardLabel(id) {
+  const d = gameMeta(id)?.display || {};
+  return d.boardLabel || (d.rows && d.cols ? `${d.rows}×${d.cols}` : '—');
+}
+function gameScoreNoun(id) {
+  return gameMeta(id)?.display?.scoreNoun || activeRenderer()?.meta?.scoreNoun || 'pts';
+}
+function applyGameMeta() {
+  const meta = gameMeta();
+  if (heroBoard) heroBoard.textContent = gameBoardLabel();
+  if (heroEyebrow) heroEyebrow.textContent = `// ${meta ? meta.name : 'Local'} Arena · ${gameBoardLabel()}`;
 }
 
 // Populate the game picker from the server registry. Hidden when only one game
@@ -116,12 +138,15 @@ async function loadGames() {
     const res = await fetch('/api/games');
     if (!res.ok) return;
     const { games = [], defaultGameId } = await res.json();
-    if (!games.length || !gameSelect) return;
+    for (const g of games) gamesMeta[g.id] = g;
+    if (!games.length || !gameSelect) { applyGameMeta(); return; }
     gameSelect.innerHTML = games.map(g => `<option value="${g.id}">${escapeHtml(g.name)}</option>`).join('');
     gameSelect.value = defaultGameId || games[0].id;
     if (games.length > 1) gameSelectField?.classList.remove('hidden');
+    applyGameMeta();
+    syncSetupPreview();
     await Promise.all(games.map(g => ensureRenderer(g.id)));
-  } catch (_) { /* single-game default still works */ }
+  } catch (_) { applyGameMeta(); /* single-game default still works */ }
 }
 
 // Lazily inject a game's renderer the first time we see its gameId, so a new
@@ -160,6 +185,7 @@ tournamentBotsInput?.addEventListener('change', syncTournamentBotNames);
 simulationCountInput?.addEventListener('input', syncSetupPreview);
 tournamentBotTimeLimitInput?.addEventListener('input', syncSetupPreview);
 modeSelect?.addEventListener('change', syncModeVisibility);
+gameSelect?.addEventListener('change', () => { applyGameMeta(); syncSetupPreview(); });
 matchSearchInput?.addEventListener('input', () => {
   matchExplorerQuery = String(matchSearchInput.value || '').trim();
   currentMatchExplorer.page = 1;
@@ -218,6 +244,23 @@ syncModeVisibility();
 syncSetupPreview();
 loadGames();
 
+// --- view router ---
+const navButtons = Array.from(document.querySelectorAll('.navBtn'));
+const topLiveDot = document.getElementById('topLiveDot');
+const topStatusText = document.getElementById('topStatusText');
+function showView(name) {
+  // duel + tournament render into the same results container; nav highlights which.
+  const viewId = (name === 'duel' || name === 'tournament') ? 'results' : name;
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === `view-${viewId}`));
+  navButtons.forEach(b => b.classList.toggle('active', b.dataset.view === name));
+  window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+}
+navButtons.forEach(b => b.addEventListener('click', () => showView(b.dataset.view)));
+function setRunnerState(running, text) {
+  if (topLiveDot) topLiveDot.classList.toggle('running', !!running);
+  if (topStatusText && text != null) topStatusText.textContent = text;
+}
+
 function updateFileName(input, target, emptyText = 'Chưa chọn file') {
   const file = input.files?.[0];
   target.textContent = file ? file.name : emptyText;
@@ -272,12 +315,16 @@ function syncModeVisibility() {
   const isDuel = mode === 'duel';
   duelFields?.classList.toggle('hidden', !isDuel);
   tournamentFields?.classList.toggle('hidden', isDuel);
-  for (const el of [botAInput, botBInput, botADataInput, botBDataInput]) {
-    if (el) {
-      el.required = isDuel;
-      el.disabled = !isDuel;
-    }
+  // Only the .cpp sources are required in duel mode; data.bin is always optional.
+  for (const el of [botAInput, botBInput]) {
+    if (el) { el.required = isDuel; el.disabled = !isDuel; }
   }
+  for (const el of [botADataInput, botBDataInput]) {
+    if (el) { el.required = false; el.disabled = !isDuel; }
+  }
+  // Disable the inactive mode's file input so hidden fields don't submit
+  // (otherwise tournament "bots" files leak into the duel 4-file limit).
+  if (tournamentBotsInput) tournamentBotsInput.disabled = isDuel;
   for (const el of [swissRoundsField, pairingMethodField, initialEloField, eloKFactorField, avoidRepeatField]) {
     el?.classList.toggle('hidden', !swiss);
   }
@@ -305,6 +352,8 @@ form.addEventListener('submit', async (e) => {
     exportLink.href = `/api/jobs/${currentJobId}/export.json`;
     startBtn.textContent = 'Running...';
     progressBar.parentElement.classList.add('running');
+    setRunnerState(true, 'RUNNING');
+    showView(duelMode ? 'duel' : 'tournament');
     pollTimer = setInterval(() => pollJob().catch(handlePollError), 900);
     await pollJob();
   } catch (err) {
@@ -330,6 +379,9 @@ function resetUiForRun() {
   startBtn.disabled = true;
   startBtn.classList.add('loading');
   startBtn.textContent = 'Starting...';
+  document.querySelectorAll('.viewEmpty').forEach(e => e.classList.add('hidden'));
+  const navCmp = document.getElementById('navCompare');
+  if (navCmp) navCmp.style.display = 'none'; // shown only for tournaments
   statusCard.classList.remove('hidden');
   standingsCard.classList.remove('hidden');
   gamesCard.classList.remove('hidden');
@@ -338,6 +390,9 @@ function resetUiForRun() {
   standingsBox.classList.remove('hidden');
   tournamentStandingsWrap.classList.add('hidden');
   tournamentAnalyticsChart.classList.add('hidden');
+  document.getElementById('arenaReliability')?.classList.add('hidden');
+  document.getElementById('stabilityScatter')?.classList.add('hidden');
+  document.getElementById('overallAnalysis')?.classList.add('hidden');
   if (tournamentAnalyticsChart) tournamentAnalyticsChart.innerHTML = '';
   datasetGroups.classList.remove('hidden');
   tournamentViews.classList.add('hidden');
@@ -368,6 +423,7 @@ function handlePollError(err) {
   startBtn.classList.remove('loading');
   startBtn.textContent = 'Start Fight';
   progressBar.parentElement.classList.remove('running');
+  setRunnerState(false, 'ERROR');
 }
 
 async function pollJob() {
@@ -395,6 +451,7 @@ async function pollJob() {
     startBtn.textContent = 'Start Fight';
     progressBar.parentElement.classList.remove('running');
     exportLink.classList.remove('hidden');
+    setRunnerState(false, job.status === 'error' ? 'ERROR' : 'IDLE · job complete');
   }
 }
 
@@ -412,6 +469,7 @@ function renderJob(job) {
   const current = job.progress?.current || '';
   statusText.textContent = `${job.status.toUpperCase()} · ${current} · ${done}/${total}`;
   if (job.error) statusText.textContent += ` · ${job.error}`;
+  if (['queued', 'compiling', 'running'].includes(job.status)) setRunnerState(true, `RUNNING · ${pct}%`);
 
   if (job.summary) {
     renderSummary(job.summary);
@@ -465,6 +523,7 @@ function renderTournamentJob(job) {
   const pct = total ? Math.round(done * 100 / total) : 0;
   progressBar.style.width = `${pct}%`;
   progressBar.setAttribute('aria-valuenow', pct);
+  if (['queued', 'compiling', 'running'].includes(job.status)) setRunnerState(true, `RUNNING · ${pct}%`);
 
   datasetGroups.classList.add('hidden');
   tournamentViews.classList.remove('hidden');
@@ -472,10 +531,19 @@ function renderTournamentJob(job) {
   tournamentStandingsWrap.classList.remove('hidden');
   tournamentAnalyticsChart.classList.remove('hidden');
 
+  const standings = job.summary?.standings || [];
+  rebuildBotColorMap(standings);
+  reliabilityEl?.classList.remove('hidden');
+  scatterEl?.classList.remove('hidden');
+  overallEl?.classList.remove('hidden');
   renderTournamentSummary(job, analytics);
   renderTournamentDiagnostics(job, analytics);
-  renderTournamentAnalyticsChart(job.summary?.standings || []);
-  renderTournamentStandings(job.summary?.standings || []);
+  renderArenaReliability(analytics, job.settings);
+  renderStabilityScatter(standings);
+  renderTournamentAnalyticsChart(standings);
+  renderTournamentStandings(standings);
+  renderOverallAnalysis(standings);
+  syncCompareControls(standings);
   renderSimulationList(job.summary?.simulations || []);
   ensureSelectedSimulationDetail();
   ensureMatchExplorerData();
@@ -662,6 +730,405 @@ function renderTournamentAnalyticsChart(rows) {
     <div class="wdlChart">${bars}</div>
   `;
 }
+
+// Stable per-bot accent palette (design oklch tags). Assigned by standings rank
+// so the strongest bot is gold, etc. Generic — independent of game.
+const BOT_PALETTE = [
+  'oklch(0.8 0.14 72)',   // gold
+  'oklch(0.78 0.1 205)',  // cyan
+  'oklch(0.78 0.13 150)', // green
+  'oklch(0.7 0.18 330)',  // magenta
+  'oklch(0.75 0.16 45)',  // orange
+  'oklch(0.72 0.14 280)', // purple
+  'oklch(0.8 0.13 110)',  // lime
+  'oklch(0.75 0.12 230)'  // blue
+];
+let botColorMap = {};
+function rebuildBotColorMap(standings) {
+  botColorMap = {};
+  standings.slice().sort((a, b) => (a.rank || 99) - (b.rank || 99)).forEach((r, i) => {
+    botColorMap[r.botId] = BOT_PALETTE[i % BOT_PALETTE.length];
+  });
+}
+function botColor(botId) { return botColorMap[botId] || 'oklch(0.78 0.1 205)'; }
+function botTag(row, idx) {
+  const base = String(row.tag || row.name || '').replace(/^A_|^B_/, '').replace(/\.cpp$/i, '');
+  return base.slice(0, 4).toUpperCase() || `B${idx + 1}`;
+}
+
+const reliabilityEl = document.getElementById('arenaReliability');
+const scatterEl = document.getElementById('stabilityScatter');
+const overallEl = document.getElementById('overallAnalysis');
+
+// ARENA RELIABILITY — global ok vs non-ok breakdown + segmented bar.
+function renderArenaReliability(analytics, settings) {
+  if (!reliabilityEl) return;
+  const g = analytics || {};
+  const total = g.totalGames || 0;
+  const ok = g.finishedGames || 0;
+  const timeout = g.timeoutCount || 0;
+  const invalid = g.invalidCount || 0;
+  const procExit = g.processExitCount || 0;
+  const procLimit = g.processLimitCount || 0;
+  const crash = g.crashCount || 0;
+  const okPct = total ? (ok / total * 100) : 0;
+  const cells = [
+    { label: 'TOTAL GAMES', value: total, color: 'var(--text)' },
+    { label: 'CLEAN OK', value: ok, color: 'var(--good)' },
+    { label: 'NON-OK', value: g.nonOkGames || 0, color: (g.nonOkGames ? 'var(--bad)' : 'var(--muted)') },
+    { label: 'TIMEOUT/TLE', value: timeout, color: timeout ? 'var(--bad)' : 'var(--muted)' },
+    { label: 'INVALID MOVE', value: invalid, color: invalid ? 'oklch(0.75 0.16 45)' : 'var(--muted)' },
+    { label: 'CRASH/EXIT', value: crash + procExit + procLimit, color: (crash + procExit + procLimit) ? 'oklch(0.72 0.14 280)' : 'var(--muted)' }
+  ];
+  const segs = [
+    { n: ok, c: 'var(--good)' },
+    { n: timeout, c: 'var(--bad)' },
+    { n: invalid, c: 'oklch(0.75 0.16 45)' },
+    { n: procExit + procLimit + crash, c: 'oklch(0.72 0.14 280)' }
+  ].filter(s => s.n > 0);
+  const segTotal = segs.reduce((s, x) => s + x.n, 0) || 1;
+  reliabilityEl.innerHTML = `
+    <div class="dashHead"><span class="dashLabel">ARENA RELIABILITY</span><span class="dashHint">you can't build the strongest bot — only the most stable one · ${okPct.toFixed(1)}% clean</span></div>
+    <div class="relGrid">
+      ${cells.map(c => `<div class="relCell"><div class="relCellLabel">${c.label}</div><div class="relCellValue" style="color:${c.color}">${c.value}</div></div>`).join('')}
+    </div>
+    <div class="relBarWrap"><div class="relBar">
+      ${segs.map(s => `<div class="relSeg" style="width:${(s.n / segTotal * 100).toFixed(2)}%;background:${s.c}"></div>`).join('')}
+    </div></div>`;
+}
+
+// STABILITY × STRENGTH scatter — x = match win% (strength), y = margin swing
+// stddev (lower = more stable). Ship zone = bottom-right (strong + stable).
+function renderStabilityScatter(standings) {
+  if (!scatterEl) return;
+  if (!standings.length) { scatterEl.innerHTML = ''; return; }
+  const maxStd = Math.max(0.0001, ...standings.map(r => Number(r.marginStdDev) || 0));
+  const dots = standings.map((r, i) => {
+    const x = Math.max(2, Math.min(98, (r.matchWinPct || 0) * 100));
+    const yFromTop = Math.max(3, Math.min(94, ((Number(r.marginStdDev) || 0) / maxStd) * 100));
+    const c = botColor(r.botId);
+    const tag = botTag(r, i);
+    return { x, yFromTop, c, tag, name: r.name };
+  });
+  scatterEl.innerHTML = `
+    <div class="dashHead"><span class="dashLabel">STABILITY × STRENGTH</span><span class="dashHint">↗ ideal: high win-rate, low swing · ship from the bottom-right</span></div>
+    <div class="scatterBody">
+      <div class="scatterYAxis">← MORE STABLE&nbsp;·&nbsp;MARGIN SWING&nbsp;·&nbsp;WILDER →</div>
+      <div class="scatterMain">
+        <div class="scatterPlot">
+          <div class="shipZone"></div>
+          <div class="shipZoneLabel">SHIP ZONE</div>
+          ${dots.map(d => `<div class="scatterDot" style="left:${d.x}%;top:${d.yFromTop}%;background:${d.c}" title="${escapeHtml(d.name)}"></div>`).join('')}
+          ${dots.map(d => `<div class="scatterLabel" style="left:${d.x}%;top:${d.yFromTop}%;color:${d.c}">${escapeHtml(d.tag)}</div>`).join('')}
+        </div>
+        <div class="scatterXAxis"><span>← WEAKER</span><span>WIN-RATE (STRENGTH)</span><span>STRONGER →</span></div>
+      </div>
+    </div>`;
+}
+
+// OVERALL ANALYSIS — full per-bot breakdown incl. EXP·PTS, sweep, turn-order, form.
+function renderOverallAnalysis(standings) {
+  if (!overallEl) return;
+  if (!standings.length) { overallEl.innerHTML = ''; return; }
+  const rows = standings.slice().sort((a, b) => (a.rank || 99) - (b.rank || 99));
+  const noun = scoreNoun();
+  const body = rows.map((r, i) => {
+    const c = botColor(r.botId);
+    const form = (r.form || []).map(f => {
+      const col = f === 'W' ? 'var(--good)' : f === 'L' ? 'var(--bad)' : 'var(--draw)';
+      return `<span class="formPip" style="background:${col}">${f}</span>`;
+    }).join('') || '<span class="muted">—</span>';
+    return `<tr>
+      <td class="ovRank">${r.rank || i + 1}</td>
+      <td><span class="ovName"><span class="ovDot" style="background:${c}"></span>${escapeHtml(r.name)}</span></td>
+      <td style="color:${c}">${escapeHtml(botTag(r, i))}</td>
+      <td>${r.matchesPlayed || 0}</td>
+      <td class="ovGood">${r.matchWins || 0}</td>
+      <td>${r.matchDraws || 0}</td>
+      <td class="ovBad">${r.matchLosses || 0}</td>
+      <td>${formatPct(r.matchWinPct)}</td>
+      <td class="ovScore">${formatNumber(r.matchScoreTotal)}</td>
+      <td class="ovElo">${formatNumber(r.eloAverage)}</td>
+      <td class="ovGood">${r.gameWins || 0}</td>
+      <td class="ovBad">${r.gameLosses || 0}</td>
+      <td>${formatNumber(r.avgCellsDiff)}</td>
+      <td class="ovExp" style="color:${c}">${formatNumber(r.expPtsPerMatch)}</td>
+      <td class="ovGood">${formatPct(r.sweptPct)}</td>
+      <td class="ovBad">${formatPct(r.sweptAgainstPct)}</td>
+      <td>${formatPct(r.firstWinPct)}</td>
+      <td>${formatPct(r.secondWinPct)}</td>
+      <td><span class="formRow">${form}</span></td>
+      <td><button type="button" class="detailBtn" data-detail="${escapeHtml(r.botId)}">DETAILS ↗</button></td>
+    </tr>`;
+  }).join('');
+  overallEl.innerHTML = `
+    <div class="dashHead"><span class="dashLabel">OVERALL ANALYSIS</span><span class="dashHint">full per-bot breakdown · scroll horizontally →</span></div>
+    <div class="tableScroll">
+      <table class="standingsTable overallTable">
+        <thead><tr>
+          <th>#</th><th>BOT</th><th>TAG</th><th>P</th><th>W</th><th>D</th><th>L</th><th>WIN%</th><th>SCORE</th><th>ELO</th><th>GW</th><th>GL</th><th>AVG ${escapeHtml(noun)}</th><th>EXP·PTS</th><th>2.0%</th><th>0.0%</th><th>1ST%</th><th>2ND%</th><th>FORM</th><th>ANALYZE</th>
+        </tr></thead>
+        <tbody>${body}</tbody>
+      </table>
+    </div>
+    <div class="dashFoot">EXP·PTS = avg points / match · 2.0% = swept (won both sides) · 0.0% = swept against · 1ST/2ND% = win-rate by turn order · AVG = mean ${escapeHtml(noun)} margin per match</div>`;
+}
+
+// ===== Per-bot performance-analysis MODAL =====
+const detailOverlay = document.getElementById('detailOverlay');
+const detailModal = document.getElementById('detailModal');
+
+function openDetail(botId) {
+  const standings = currentJob?.summary?.standings || [];
+  const r = standings.find(x => x.botId === botId);
+  if (!r || !detailModal) return;
+  rebuildBotColorMap(standings);
+  const c = botColor(botId);
+  const noun = scoreNoun();
+  const played = r.matchesPlayed || 0;
+  const gp = r.gamesPlayed || 0;
+  const pw = r.gameWinPct || 0;
+  const ci = gp ? Math.round(1.96 * Math.sqrt(pw * (1 - pw) / gp) * 100) : 0;
+
+  const dist = [
+    { pts: '2.0', desc: 'Sweep · won both sides', key: '2.0' },
+    { pts: '1.5', desc: 'Win + draw', key: '1.5' },
+    { pts: '1.0', desc: 'Split · or two draws', key: '1.0' },
+    { pts: '0.5', desc: 'Draw + loss', key: '0.5' },
+    { pts: '0.0', desc: 'Swept · lost both', key: '0.0' }
+  ].map(d => ({ ...d, count: (r.matchScoreDist || {})[d.key] || 0 }));
+  const maxc = Math.max(1, ...dist.map(d => d.count));
+  const distHtml = dist.map(d => `
+    <div class="distRow">
+      <div class="distPts" style="color:${c}">${d.pts}</div>
+      <div class="distDesc">${d.desc}</div>
+      <div class="distTrack"><div class="distFill" style="width:${Math.max(2, Math.round(d.count / maxc * 100))}%;background:${c}"></div></div>
+      <div class="distPct">${played ? Math.round(d.count / played * 100) : 0}%</div>
+      <div class="distCount">×${d.count}</div>
+    </div>`).join('');
+
+  const wdl = [
+    { l: 'WIN', p: r.gameWinPct || 0, col: 'var(--good)' },
+    { l: 'DRAW', p: r.gameDrawPct || 0, col: 'var(--muted)' },
+    { l: 'LOSS', p: r.gameLossPct || 0, col: 'var(--bad)' }
+  ].map(x => `<div class="pgRow"><div class="pgTop"><span style="color:${x.col}">${x.l}</span><span>${formatPct(x.p)}</span></div><div class="pgTrack"><div class="pgFill" style="width:${Math.round(x.p * 100)}%;background:${x.col}"></div></div></div>`).join('');
+
+  const samples = r.gameScoreSamples || [];
+  let histHtml = '<div class="muted" style="padding:10px 0">no game samples</div>';
+  if (samples.length) {
+    const mn = Math.min(...samples), mx = Math.max(...samples);
+    const span = Math.max(1, mx - mn), nb = 4, counts = Array(nb).fill(0);
+    samples.forEach(s => { counts[Math.min(nb - 1, Math.floor((s - mn) / span * nb))]++; });
+    const mxc = Math.max(1, ...counts);
+    histHtml = counts.map((cnt, i) => {
+      const lo = Math.round(mn + span / nb * i), hi = Math.round(mn + span / nb * (i + 1));
+      return `<div class="histCol"><span class="histPct">${Math.round(cnt / samples.length * 100)}%</span><div class="histBar" style="height:${Math.round(cnt / mxc * 64 + 8)}px;background:${c}"></div><span class="histLabel">${lo}–${hi}</span></div>`;
+    }).join('');
+  }
+
+  const okGames = gp - (r.nonOkCount || 0);
+  const reli = [['OK', okGames, 'var(--good)'], ['TLE', r.timeoutCount || 0, 'var(--bad)'], ['ILLEGAL', r.invalidCount || 0, 'oklch(0.75 0.16 45)'], ['CRASH', (r.crashCount || 0) + (r.processExitCount || 0) + (r.processLimitCount || 0), 'oklch(0.72 0.14 280)']];
+  const reliMax = Math.max(1, ...reli.map(x => x[1]));
+  const reliHtml = reli.map(([l, n, col]) => `<div class="pgRow"><div class="pgTop"><span style="color:${col}">${l}</span><span>${n}</span></div><div class="pgTrack"><div class="pgFill" style="width:${Math.round(n / reliMax * 100)}%;background:${col}"></div></div></div>`).join('');
+
+  const opps = Object.entries(r.opponents || {}).map(([oid, o]) => `<tr><td>${escapeHtml(getBotNameById(oid))}</td><td class="ovGood">${o.wins}</td><td>${o.draws}</td><td class="ovBad">${o.losses}</td><td>${o.matches}</td><td>${formatNumber(o.cellsDiffTotal)}</td></tr>`).join('') || '<tr><td colspan="6" class="muted">no opponents</td></tr>';
+
+  const form = (r.form || []).map(f => { const col = f === 'W' ? 'var(--good)' : f === 'L' ? 'var(--bad)' : 'var(--draw)'; return `<span class="formPip" style="background:${col}">${f}</span>`; }).join('') || '<span class="muted">—</span>';
+
+  detailModal.innerHTML = `
+    <div class="modalHead">
+      <span class="ovDot" style="background:${c};width:12px;height:12px"></span>
+      <div><div class="modalName">${escapeHtml(r.name)}</div><div class="modalSub">PERFORMANCE ANALYSIS · ${played} MATCHES</div></div>
+      <span class="modalTag" style="color:${c}">${escapeHtml(botTag(r, (r.rank || 1) - 1))}</span>
+      <button type="button" class="modalClose" id="detailClose">×</button>
+    </div>
+    <div class="modalStats">
+      <div class="mStat"><div class="mStatLabel">RANK</div><div class="mStatVal">#${r.rank || '-'}</div></div>
+      <div class="mStat"><div class="mStatLabel">ELO</div><div class="mStatVal" style="color:${c}">${formatNumber(r.eloAverage)}</div></div>
+      <div class="mStat"><div class="mStatLabel">SCORE</div><div class="mStatVal">${formatNumber(r.matchScoreTotal)}</div></div>
+      <div class="mStat"><div class="mStatLabel">WIN%</div><div class="mStatVal">${formatPct(r.matchWinPct)} <small style="color:${c}">±${ci}</small></div><div class="mStatFoot">N = ${gp} games</div></div>
+      <div class="mStat"><div class="mStatLabel">EXP PTS/MATCH</div><div class="mStatVal" style="color:${c}">${formatNumber(r.expPtsPerMatch)}</div></div>
+    </div>
+    <div class="modalBody">
+      <div class="modalSecLabel">MATCH POINT DISTRIBUTION <span class="muted">· probability per 2-game match</span></div>
+      <div class="distList">${distHtml}</div>
+      <div class="modalCols">
+        <div>
+          <div class="modalSecLabel">PER-GAME OUTCOME</div>
+          ${wdl}
+        </div>
+        <div>
+          <div class="modalSecLabel">SCORE PER GAME <span class="muted">· ${escapeHtml(noun)}</span></div>
+          <div class="histWrap">${histHtml}</div>
+        </div>
+      </div>
+      <div class="modalCols">
+        <div>
+          <div class="modalSecLabel">MOVE ADVANTAGE</div>
+          <div class="pgRow"><div class="pgTop"><span>WIN% AS FIRST</span><span>${formatPct(r.firstWinPct)}</span></div><div class="pgTrack"><div class="pgFill" style="width:${Math.round((r.firstWinPct || 0) * 100)}%;background:${c}"></div></div></div>
+          <div class="pgRow"><div class="pgTop"><span>WIN% AS SECOND</span><span>${formatPct(r.secondWinPct)}</span></div><div class="pgTrack"><div class="pgFill" style="width:${Math.round((r.secondWinPct || 0) * 100)}%;background:${c}"></div></div></div>
+          <div class="modalSecLabel" style="margin-top:16px">RECENT FORM</div>
+          <div class="formRow">${form}</div>
+        </div>
+        <div>
+          <div class="modalSecLabel">RELIABILITY</div>
+          ${reliHtml}
+        </div>
+      </div>
+      <div class="modalSecLabel">BY OPPONENT</div>
+      <div class="tableScroll"><table class="standingsTable byOppTable"><thead><tr><th>OPPONENT</th><th>W</th><th>D</th><th>L</th><th>MATCHES</th><th>NET ${escapeHtml(noun).toUpperCase()}</th></tr></thead><tbody>${opps}</tbody></table></div>
+    </div>`;
+  detailOverlay.classList.remove('hidden');
+  document.getElementById('detailClose')?.addEventListener('click', closeDetail);
+}
+function closeDetail() { detailOverlay?.classList.add('hidden'); }
+detailOverlay?.addEventListener('click', e => { if (e.target === detailOverlay) closeDetail(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && detailOverlay && !detailOverlay.classList.contains('hidden')) closeDetail(); });
+document.getElementById('overallAnalysis')?.addEventListener('click', e => {
+  const b = e.target.closest('button[data-detail]');
+  if (b) openDetail(b.dataset.detail);
+});
+
+// ===== Version compare (bot-vs-bot head-to-head from tournament data) =====
+const compareASel = document.getElementById('compareA');
+const compareBSel = document.getElementById('compareB');
+const compareBody = document.getElementById('compareBody');
+const navCompare = document.getElementById('navCompare');
+let compareA = null, compareB = null;
+
+function syncCompareControls(standings) {
+  if (!compareASel || !compareBSel) return;
+  if (navCompare) navCompare.style.display = standings.length >= 2 ? 'inline-block' : 'none';
+  if (standings.length < 2) { compareBody.innerHTML = '<div class="viewEmpty emptyState">Run a tournament with 2+ bots, then pick two to compare.</div>'; return; }
+  const opts = standings.map(r => `<option value="${escapeHtml(r.botId)}">${escapeHtml(r.name)}</option>`).join('');
+  const validA = standings.some(r => r.botId === compareA);
+  const validB = standings.some(r => r.botId === compareB);
+  if (!validA) compareA = standings[0].botId;
+  if (!validB) compareB = standings[1].botId;
+  compareASel.innerHTML = opts; compareASel.value = compareA;
+  compareBSel.innerHTML = opts; compareBSel.value = compareB;
+  renderCompare();
+}
+
+function deltaCell(label, value, sub, positiveGood = true) {
+  const n = Number(value) || 0;
+  const col = n === 0 ? 'var(--muted)' : ((n > 0) === positiveGood ? 'var(--good)' : 'var(--bad)');
+  const sign = n > 0 ? '+' : '';
+  return `<div class="deltaCell"><div class="deltaLabel">${label}</div><div class="deltaVal" style="color:${col}">${sign}${typeof value === 'string' ? value : formatNumber(n)}</div><div class="deltaSub">${sub}</div></div>`;
+}
+
+let comparePair = null; // { key, games:[{seed,aScore,bScore,status}] }
+let comparePairSeq = 0;
+
+// Fetch the head-to-head game history for the two selected bots and orient every
+// game to bot A's perspective, so the per-seed diff reads consistently.
+async function loadComparePair(aId, bId) {
+  if (!currentJobId) return;
+  const key = `${aId}::${bId}`;
+  if (comparePair && comparePair.key === key) { renderCompare(); return; }
+  const seq = ++comparePairSeq;
+  try {
+    const res = await fetch(`/api/jobs/${currentJobId}/pairs/${encodeURIComponent(aId)}/${encodeURIComponent(bId)}`);
+    const data = await res.json();
+    if (seq !== comparePairSeq) return;
+    const games = [];
+    for (const m of (data.matches || [])) {
+      const aIsMatchA = m.botAId === aId;
+      for (const g of (m.games || [])) {
+        games.push({
+          seed: g.seed,
+          aScore: aIsMatchA ? g.botAScore : g.botBScore,
+          bScore: aIsMatchA ? g.botBScore : g.botAScore,
+          status: g.status
+        });
+      }
+    }
+    comparePair = { key, games };
+  } catch (_) {
+    comparePair = { key, games: [] };
+  }
+  renderCompare();
+}
+
+function renderCompare() {
+  if (!compareBody || !currentJob || !isTournamentJob(currentJob)) return;
+  const standings = currentJob.summary?.standings || [];
+  const A = standings.find(r => r.botId === compareA);
+  const B = standings.find(r => r.botId === compareB);
+  if (!A || !B) { compareBody.innerHTML = '<div class="viewEmpty emptyState">Pick two distinct bots.</div>'; return; }
+  if (A.botId === B.botId) { compareBody.innerHTML = '<div class="viewEmpty emptyState">Pick two <b>distinct</b> bots.</div>'; return; }
+  const key = `${A.botId}::${B.botId}`;
+  if (!comparePair || comparePair.key !== key) { loadComparePair(A.botId, B.botId); }
+  rebuildBotColorMap(standings);
+  const cA = botColor(A.botId), cB = botColor(B.botId);
+  const noun = scoreNoun();
+  const winDelta = (B.matchWinPct - A.matchWinPct) * 100;
+  const marginDelta = B.avgCellsDiff - A.avgCellsDiff;
+  const tleDelta = (B.timeoutCount || 0) - (A.timeoutCount || 0);
+
+  // per-seed head-to-head (A perspective)
+  const games = (comparePair && comparePair.key === key) ? comparePair.games : [];
+  let aWins = 0, bWins = 0, draws = 0, netCells = 0;
+  const rows = games.map(g => {
+    const d = (g.aScore || 0) - (g.bScore || 0);
+    netCells += d;
+    const out = d > 0 ? 'W' : d < 0 ? 'L' : 'D';
+    if (d > 0) aWins++; else if (d < 0) bWins++; else draws++;
+    const shiftCls = d > 0 ? 'shiftGain' : d < 0 ? 'shiftLoss' : '';
+    const shiftTxt = d > 0 ? '▲ A' : d < 0 ? '▼ B' : '·';
+    return `<tr class="${d !== 0 ? 'seedFlip ' + shiftCls : ''}">
+      <td class="seedCell">${escapeHtml(shortSeed(g.seed))}</td>
+      <td><span style="color:${d > 0 ? cA : d < 0 ? cB : 'var(--muted)'};font-weight:700">${out}</span> <span class="muted">${g.aScore || 0}</span></td>
+      <td><span style="color:${d < 0 ? cB : d > 0 ? cA : 'var(--muted)'};font-weight:700">${out === 'W' ? 'L' : out === 'L' ? 'W' : 'D'}</span> <span class="muted">${g.bScore || 0}</span></td>
+      <td style="color:${d > 0 ? 'var(--good)' : d < 0 ? 'var(--bad)' : 'var(--muted)'}">${d > 0 ? '+' : ''}${d}</td>
+      <td><span class="${shiftCls}">${shiftTxt}</span></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="5" class="muted">Loading head-to-head games…</td></tr>';
+
+  const netA = aWins - bWins;
+  const better = netA > 0 ? A : netA < 0 ? B : null;
+  const verdictCol = better ? botColor(better.botId) : 'var(--muted)';
+  const verdict = better ? `${shortName(better.name).toUpperCase()} WINS HEAD-TO-HEAD` : 'DEAD HEAT';
+  const verdictSub = games.length
+    ? `${aWins > bWins ? '+' + (aWins - bWins) : aWins < bWins ? '+' + (bWins - aWins) : '0'} net seed wins for ${better ? shortName(better.name) : 'neither'} · ${games.length} shared games · net ${netCells >= 0 ? '+' : ''}${netCells} ${noun}`
+    : 'no shared head-to-head games yet';
+
+  compareBody.innerHTML = `
+    <div class="compareHeads">
+      <div class="compareHead" style="border-color:${cA}">
+        <div class="dashLabel">VERSION A</div>
+        <div class="compareHeadName"><span class="ovDot" style="background:${cA}"></span>${escapeHtml(A.name)}<span class="verTag" style="color:${cA};border-color:${cA}">${escapeHtml(botTag(A, (A.rank || 1) - 1))}</span></div>
+        <div class="compareRec">record on shared seeds&nbsp;&nbsp;<b>${aWins}–${draws}–${bWins}</b></div>
+      </div>
+      <div class="compareVsBox">vs</div>
+      <div class="compareHead" style="border-color:${cB}">
+        <div class="dashLabel">VERSION B</div>
+        <div class="compareHeadName"><span class="verTag" style="color:${cB};border-color:${cB}">${escapeHtml(botTag(B, (B.rank || 1) - 1))}</span>${escapeHtml(B.name)}<span class="ovDot" style="background:${cB}"></span></div>
+        <div class="compareRec"><b>${bWins}–${draws}–${aWins}</b>&nbsp;&nbsp;record on shared seeds</div>
+      </div>
+    </div>
+    <div class="verdictBanner" style="border-color:${verdictCol}">
+      <div class="verdictBar" style="background:${verdictCol}"></div>
+      <div class="verdictMain"><div class="verdictTitle" style="color:${verdictCol}">${escapeHtml(verdict)}</div><div class="verdictSub">${escapeHtml(verdictSub)}</div></div>
+      <div class="verdictRight"><div class="dashLabel">SHARED GAMES</div><div class="verdictN">${games.length}</div></div>
+    </div>
+    <div class="deltaGrid">
+      ${deltaCell('WIN% DELTA (B − A)', winDelta.toFixed(1) + '%', `${formatPct(A.matchWinPct)} → ${formatPct(B.matchWinPct)}`, true)}
+      ${deltaCell('AVG MARGIN DELTA', marginDelta, `${noun} / match`, true)}
+      ${deltaCell('TLE DELTA', tleDelta, `A:${A.timeoutCount || 0} · B:${B.timeoutCount || 0} timeouts`, false)}
+      <div class="deltaCell"><div class="deltaLabel">SEED OUTCOMES</div><div class="deltaVal"><span style="color:var(--good)">▲${aWins}</span> <span style="color:var(--bad)">▼${bWins}</span></div><div class="deltaSub">A wins vs B wins</div></div>
+    </div>
+    <div class="dashPanel" style="margin-top:14px">
+      <div class="dashHead"><span class="dashLabel">PER-SEED DIFF · <span style="color:${cA}">${escapeHtml(shortName(A.name))}</span> vs <span style="color:${cB}">${escapeHtml(shortName(B.name))}</span></span><span class="dashHint">highlighted rows = A took the seed</span></div>
+      <div class="tableScroll"><table class="standingsTable seedDiffTable">
+        <thead><tr><th>SEED</th><th style="color:${cA}">A · ${escapeHtml(botTag(A, 0))}</th><th style="color:${cB}">B · ${escapeHtml(botTag(B, 1))}</th><th>Δ ${escapeHtml(noun).toUpperCase()}</th><th>SHIFT</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+    </div>`;
+}
+
+compareASel?.addEventListener('change', () => { compareA = compareASel.value; comparePair = null; renderCompare(); });
+compareBSel?.addEventListener('change', () => { compareB = compareBSel.value; comparePair = null; renderCompare(); });
 
 function renderTournamentStandings(rows) {
   if (!rows.length) {
@@ -910,13 +1377,18 @@ function sortButton(key, label) {
   return `<button class="tableSortBtn${active ? ' active' : ''}" type="button" data-sort-key="${key}">${label}${arrow}</button>`;
 }
 
+let matrixMode = 'record'; // 'record' | 'fragility'
+
 function renderPairMatrix(matrix, rows) {
   if (!rows.length) {
     pairMatrix.innerHTML = '<div class="emptyState">Chưa có pair matrix.</div>';
     return;
   }
   const ids = rows.map(row => row.botId);
+  const hint = matrixMode === 'fragility' ? 'seed-to-seed swing (stable → coin-flip)' : 'head-to-head W–D–L (row vs col)';
+  const modeBtn = (k, label) => `<button type="button" class="matrixModeBtn${matrixMode === k ? ' active' : ''}" data-matrix-mode="${k}">${label}</button>`;
   pairMatrix.innerHTML = `
+    <div class="matrixToolbar"><span class="dashHint">· ${hint}</span><div class="matrixModes">${modeBtn('record', 'W–D–L')}${modeBtn('fragility', 'FRAGILITY')}</div></div>
     <table class="pairMatrixTable">
       <thead>
         <tr><th>Bot</th>${rows.map(row => `<th>${escapeHtml(shortName(row.name))}</th>`).join('')}</tr>
@@ -937,11 +1409,19 @@ function renderPairMatrixCell(rowId, colId, matrix) {
   if (rowId === colId) return '<td><div class="matrixCell neutral">-</div></td>';
   const cell = matrix?.[rowId]?.[colId];
   if (!cell || !cell.matches) return '<td><div class="matrixCell neutral">n/a</div></td>';
+  const active = selectedPair && selectedPair.rowId === rowId && selectedPair.colId === colId ? ' active' : '';
+  if (matrixMode === 'fragility') {
+    // closeness of the record = how coin-flippy this matchup is (real, no RNG)
+    const decided = cell.aWins + cell.aLosses;
+    const closeness = decided ? 1 - Math.abs(cell.aWins - cell.aLosses) / decided : 0;
+    const lbl = closeness > 0.66 ? 'COIN' : closeness > 0.33 ? 'SWING' : 'STBL';
+    const cls = closeness > 0.66 ? 'bad' : closeness > 0.33 ? 'draw' : 'neutral';
+    return `<td><button class="matrixCell ${cls}${active}" type="button" data-matrix-row="${rowId}" data-matrix-col="${colId}" title="record ${cell.aWins}-${cell.draws}-${cell.aLosses} · closeness ${formatPct(closeness)}"><b>${lbl}</b><small>${cell.aWins}-${cell.draws}-${cell.aLosses}</small></button></td>`;
+  }
   const avgScore = cell.matches ? cell.aScoreTotal / cell.matches : 0;
   const avgDiff = cell.matches ? cell.aCellsDiffTotal / cell.matches : 0;
   const winPct = cell.matches ? cell.aWins / cell.matches : 0;
   const cls = avgScore > 1.05 ? 'good' : avgScore < 0.95 ? 'bad' : 'draw';
-  const active = selectedPair && selectedPair.rowId === rowId && selectedPair.colId === colId ? ' active' : '';
   return `<td><button class="matrixCell ${cls}${active}" type="button" data-matrix-row="${rowId}" data-matrix-col="${colId}" title="wins ${cell.aWins}, draws ${cell.draws}, losses ${cell.aLosses}, non-ok ${cell.nonOk}"><b>${formatPct(winPct)} W</b><br/>avg ${formatNumber(avgScore)}<br/>${formatSigned(avgDiff)} ${scoreNoun()}<br/>n=${cell.matches}<small>${cell.aWins}-${cell.draws}-${cell.aLosses} · non-ok ${cell.nonOk}</small></button></td>`;
 }
 
@@ -971,6 +1451,12 @@ simulationList?.addEventListener('click', (e) => {
 });
 
 pairMatrix?.addEventListener('click', (e) => {
+  const modeBtn = e.target.closest('button[data-matrix-mode]');
+  if (modeBtn && currentJob) {
+    matrixMode = modeBtn.dataset.matrixMode;
+    renderPairMatrix(currentJob.summary?.pairMatrix || {}, currentJob.summary?.standings || []);
+    return;
+  }
   const button = e.target.closest('button[data-matrix-row][data-matrix-col]');
   if (!button || !currentJob) return;
   selectedPair = {
@@ -1070,18 +1556,29 @@ function renderStandings(s, settings) {
 }
 
 function standingCard(label, name, bot, diff) {
-  const diffClass = diff > 0 ? 'good' : diff < 0 ? 'bad' : 'draw';
+  const played = (bot.wins || 0) + (bot.draws || 0) + (bot.losses || 0);
+  const winPct = played ? bot.wins / played : 0;
+  const w = played ? Math.round(bot.wins / played * 100) : 0;
+  const d = played ? Math.round(bot.draws / played * 100) : 0;
+  const l = Math.max(0, 100 - w - d);
   const diffText = diff > 0 ? `+${diff}` : String(diff);
+  const accent = label === 'A' ? 'var(--botA)' : 'var(--botB)';
   return `
     <div class="standingCard">
       <div class="standingTop">
-        <div class="standingName"><span class="avatar ${label.toLowerCase()}">${label}</span><span>${escapeHtml(name)}</span></div>
-        <span class="pill ${diffClass}">${diffText} ${scoreNoun()}</span>
+        <div class="standingName"><span class="avatar ${label.toLowerCase()}"></span><span>${escapeHtml(name)}</span><span class="botTagLabel" style="color:${accent}">BOT&nbsp;${label}</span></div>
+        <span class="bigRate" style="color:${accent}">${formatPct(winPct)}</span>
       </div>
-      <div class="record">
-        <div><small>Wins</small><b>${bot.wins}</b></div>
-        <div><small>Draws</small><b>${bot.draws}</b></div>
-        <div><small>Losses</small><b>${bot.losses}</b></div>
+      <div class="wdlNums">
+        <div><b class="ovGood">${bot.wins || 0}</b><small>WINS</small></div>
+        <div><b>${bot.draws || 0}</b><small>DRAWS</small></div>
+        <div><b class="ovBad">${bot.losses || 0}</b><small>LOSSES</small></div>
+        <div class="wdlNumsDiff"><b style="color:${accent}">${diffText}</b><small>${escapeHtml(scoreNoun()).toUpperCase()} DIFF</small></div>
+      </div>
+      <div class="wdlBar standingBar">
+        <span class="wdlSeg win" style="width:${w}%">${w >= 12 ? w + '%' : ''}</span>
+        <span class="wdlSeg draw" style="width:${d}%">${d >= 12 ? d + '%' : ''}</span>
+        <span class="wdlSeg loss" style="width:${l}%">${l >= 12 ? l + '%' : ''}</span>
       </div>
     </div>`;
 }

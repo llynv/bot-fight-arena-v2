@@ -1,13 +1,9 @@
 'use strict';
 
-const { spawn, execFile } = require('child_process');
+const { spawn } = require('child_process');
 const path = require('path');
 const { clampPositiveInt, DEFAULT_PROCESS_TIME_LIMIT_MS } = require('../timing');
-
-function parseRssKb(stdout) {
-  const value = Number(String(stdout || '').trim().split(/\s+/)[0]);
-  return Number.isFinite(value) && value > 0 ? value : null;
-}
+const { sampleRssKb } = require('../runtime/platform');
 
 // Wraps a bot subprocess as a line-oriented request/response channel with memory
 // sampling and a hard lifetime cap. Knows nothing about any game's protocol.
@@ -82,14 +78,10 @@ class LineProcess {
   sampleMemory() {
     if (!this.pid || this.exited || this.memorySampleInFlight) return Promise.resolve(null);
     this.memorySampleInFlight = true;
-    return new Promise(resolve => {
-      execFile('ps', ['-o', 'rss=', '-p', String(this.pid)], { timeout: 1000 }, (err, stdout) => {
-        this.memorySampleInFlight = false;
-        if (err) return resolve(null);
-        const rssKb = parseRssKb(stdout);
-        this._recordMemory(rssKb);
-        resolve(rssKb);
-      });
+    return sampleRssKb(this.pid).then(rssKb => {
+      this.memorySampleInFlight = false;
+      this._recordMemory(rssKb);
+      return rssKb;
     });
   }
 
@@ -158,4 +150,4 @@ class LineProcess {
   }
 }
 
-module.exports = { LineProcess, parseRssKb };
+module.exports = { LineProcess };
